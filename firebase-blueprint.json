@@ -1,0 +1,210 @@
+{
+  "entities": {
+    "AndonCall": {
+      "title": "AndonCall",
+      "description": "An active or historical andon incident call triggered by an operator on the shopfloor",
+      "type": "object",
+      "properties": {
+        "ticketNo": {
+          "type": "string",
+          "description": "Unique human-readable ticket number (e.g., TKT-8912)"
+        },
+        "lineId": {
+          "type": "string",
+          "description": "ID of the production line"
+        },
+        "lineName": {
+          "type": "string",
+          "description": "Display name of the production line"
+        },
+        "workstation": {
+          "type": "string",
+          "description": "Workstation or station name"
+        },
+        "category": {
+          "type": "string",
+          "description": "Issue category (e.g. machine_breakdown, material_shortage, quality_defect, maintenance_tooling, supervisor_call, safety_alert)"
+        },
+        "severity": {
+          "type": "string",
+          "description": "Severity level (minor, major, critical_line_stop)"
+        },
+        "isLineStopped": {
+          "type": "boolean",
+          "description": "Whether the line is completely stopped"
+        },
+        "status": {
+          "type": "string",
+          "description": "Status of the ticket (calling, acknowledged, in_progress, resolved)"
+        },
+        "operatorName": {
+          "type": "string",
+          "description": "Operator name who triggered the call"
+        },
+        "operatorId": {
+          "type": "string",
+          "description": "Operator badge ID"
+        },
+        "machineId": {
+          "type": "string",
+          "description": "Machine ID or asset identifier"
+        },
+        "partNumber": {
+          "type": "string",
+          "description": "Part or component number"
+        },
+        "description": {
+          "type": "string",
+          "description": "Problem description and notes"
+        },
+        "timestamp": {
+          "type": "number",
+          "description": "Creation timestamp in epoch ms"
+        },
+        "acknowledgedAt": {
+          "type": "number",
+          "description": "Timestamp when technician acknowledged"
+        },
+        "acknowledgedBy": {
+          "type": "string",
+          "description": "Name of technician who acknowledged"
+        },
+        "inProgressAt": {
+          "type": "number",
+          "description": "Timestamp when repair started"
+        },
+        "resolvedAt": {
+          "type": "number",
+          "description": "Timestamp when issue was resolved"
+        },
+        "resolvedBy": {
+          "type": "string",
+          "description": "Name of person who resolved the ticket"
+        },
+        "rootCause": {
+          "type": "string",
+          "description": "Identified root cause of the incident"
+        },
+        "resolutionNotes": {
+          "type": "string",
+          "description": "Corrective action notes and solution"
+        }
+      },
+      "required": ["ticketNo", "lineId", "lineName", "workstation", "category", "severity", "isLineStopped", "status", "operatorName", "timestamp"]
+    },
+    "MasterLine": {
+      "title": "MasterLine",
+      "description": "Master data definition for production lines in the plant",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique line ID"
+        },
+        "name": {
+          "type": "string",
+          "description": "Full name of the production line"
+        },
+        "shortCode": {
+          "type": "string",
+          "description": "Short abbreviation (e.g. L1, L2)"
+        },
+        "department": {
+          "type": "string",
+          "description": "Department or shop (e.g. Machining, Assembly, Stamping)"
+        },
+        "workstations": {
+          "type": "array",
+          "description": "List of station names"
+        },
+        "status": {
+          "type": "string",
+          "description": "Current status (running, warning, critical, planned_stop)"
+        },
+        "targetDaily": {
+          "type": "number",
+          "description": "Daily production target"
+        },
+        "actualOutput": {
+          "type": "number",
+          "description": "Current output"
+        },
+        "efficiency": {
+          "type": "number",
+          "description": "OEE / efficiency percentage"
+        },
+        "leaderName": {
+          "type": "string",
+          "description": "Shift leader in charge"
+        },
+        "currentShift": {
+          "type": "string",
+          "description": "Active shift name"
+        }
+      },
+      "required": ["id", "name", "shortCode", "department", "workstations", "status", "targetDaily"]
+    },
+    "ActivityLog": {
+      "title": "ActivityLog",
+      "description": "Audit trail log for actions performed across the smart factory system",
+      "type": "object",
+      "properties": {
+        "timestamp": {
+          "type": "number",
+          "description": "Event timestamp in epoch ms"
+        },
+        "action": {
+          "type": "string",
+          "description": "Action type code"
+        },
+        "title": {
+          "type": "string",
+          "description": "Short title of the logged event"
+        },
+        "details": {
+          "type": "string",
+          "description": "Detailed description of the action"
+        },
+        "userId": {
+          "type": "string",
+          "description": "User ID or badge ID"
+        },
+        "userName": {
+          "type": "string",
+          "description": "Display name of the user"
+        },
+        "userRole": {
+          "type": "string",
+          "description": "Role authority of the user"
+        },
+        "callId": {
+          "type": "string",
+          "description": "Related andon call ID if applicable"
+        },
+        "lineId": {
+          "type": "string",
+          "description": "Related line ID if applicable"
+        },
+        "ticketNo": {
+          "type": "string",
+          "description": "Related ticket number if applicable"
+        }
+      },
+      "required": ["timestamp", "action", "title", "details", "userId", "userName", "userRole"]
+    }
+  },
+  "firestore": {
+    "/andon_calls/{callId}": {
+      "schema": { "$ref": "#/entities/AndonCall" },
+      "description": "Live and historical Andon call records"
+    },
+    "/master_lines/{lineId}": {
+      "schema": { "$ref": "#/entities/MasterLine" },
+      "description": "Master production line definitions"
+    },
+    "/activity_logs/{logId}": {
+      "schema": { "$ref": "#/entities/ActivityLog" },
+      "description": "Audit logs of shopfloor activity"
+    }
+  }
+}

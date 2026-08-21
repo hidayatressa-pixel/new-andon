@@ -1,0 +1,6 @@
+{
+  "name": "Andon Smart Factory - Manufacturing Calling System",
+  "description": "Sistem panggilan Andon manufaktur modern dengan visual display board, terminal panggilan operator, respon teknisi/maintenance, alarm suara real-time, tata letak pabrik, dan analitik downtime.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
