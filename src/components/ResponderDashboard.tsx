@@ -9,8 +9,7 @@ import {
   Check, 
   Search, 
   Filter, 
-  PlayCircle,
-  Sparkles
+  PlayCircle
 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { AndonCall, CallStatus, CallCategory, UserProfile, AppTheme, AppLanguage } from "../types";
@@ -21,7 +20,6 @@ import { getTranslation, TranslationKey } from "../utils/i18n";
 interface ResponderDashboardProps {
   calls: AndonCall[];
   onUpdateCallStatus: (callId: string, status: CallStatus, extra?: Partial<AndonCall>) => void;
-  onOpenAiForCall: (call: AndonCall) => void;
   currentUser?: UserProfile | null;
   theme?: AppTheme;
   language?: AppLanguage;
@@ -30,7 +28,6 @@ interface ResponderDashboardProps {
 export const ResponderDashboard: React.FC<ResponderDashboardProps> = ({
   calls,
   onUpdateCallStatus,
-  onOpenAiForCall,
   currentUser,
   theme = "light",
   language = "id",
@@ -339,20 +336,6 @@ export const ResponderDashboard: React.FC<ResponderDashboardProps> = ({
                         {call.workstation} {call.machineId ? `• ${call.machineId}` : ""}
                       </div>
                     </div>
-
-                    {/* AI Button */}
-                    <button
-                      onClick={() => onOpenAiForCall(call)}
-                      className={`flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-bold transition-colors border shadow-sm ${
-                        isLight
-                          ? "bg-purple-50 hover:bg-purple-100 border-purple-200 text-purple-800"
-                          : "bg-purple-950/60 hover:bg-purple-900 border-purple-500/40 text-purple-200"
-                      }`}
-                      title={t("aiAdvisor")}
-                    >
-                      <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                      <span className="hidden sm:inline">AI 5-Why</span>
-                    </button>
                   </div>
 
                   {/* Problem Description */}

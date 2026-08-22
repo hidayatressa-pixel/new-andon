@@ -11,7 +11,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import { AndonCall, AndonLine, CallCategory, AppTheme, AppLanguage } from "../types";
-import { CATEGORIES_DATA } from "../utils/categories";
+import { CATEGORIES_DATA, normalizeCategoryToPrimary } from "../utils/categories";
 import { formatDuration, formatTimestamp } from "../utils/storage";
 import { getTranslation, TranslationKey } from "../utils/i18n";
 import Papa from "papaparse";
@@ -70,19 +70,17 @@ export const AnalyticsReports: React.FC<AnalyticsReportsProps> = ({
     return acc + Math.floor((end - c.timestamp) / 60000);
   }, 0);
 
-  // Category Breakdown for Pareto Chart
-  const categoryCounts: Record<CallCategory, number> = {
-    machine_breakdown: 0,
-    material_shortage: 0,
-    quality_defect: 0,
-    maintenance_tooling: 0,
-    supervisor_call: 0,
-    safety_alert: 0,
+  // Category Breakdown for Pareto Chart (strictly 3 primary categories)
+  const categoryCounts: Record<"abnormal_machine" | "leader_call" | "material_support", number> = {
+    abnormal_machine: 0,
+    leader_call: 0,
+    material_support: 0,
   };
 
   calls.forEach((c) => {
-    if (categoryCounts[c.category] !== undefined) {
-      categoryCounts[c.category]++;
+    const primary = normalizeCategoryToPrimary(c.category);
+    if (categoryCounts[primary] !== undefined) {
+      categoryCounts[primary]++;
     }
   });
 
@@ -291,11 +289,9 @@ export const AnalyticsReports: React.FC<AnalyticsReportsProps> = ({
                 <div className={`w-full h-3 rounded-full overflow-hidden ${isLight ? "bg-slate-100" : "bg-neutral-950"}`}>
                   <div
                     className={`h-full rounded-full transition-all duration-500 ${
-                      catKey === "machine_breakdown" ? "bg-red-500" :
-                      catKey === "material_shortage" ? "bg-amber-500" :
-                      catKey === "quality_defect" ? "bg-purple-500" :
-                      catKey === "maintenance_tooling" ? "bg-blue-500" :
-                      catKey === "safety_alert" ? "bg-emerald-500" : "bg-cyan-500"
+                      catKey === "abnormal_machine" ? "bg-red-500 shadow-[0_0_8px_#ef4444]" :
+                      catKey === "leader_call" ? "bg-amber-400 shadow-[0_0_8px_#f59e0b]" :
+                      "bg-emerald-500 shadow-[0_0_8px_#10b981]"
                     }`}
                     style={{ width: `${Math.max(barWidth, count > 0 ? 5 : 0)}%` }}
                   />

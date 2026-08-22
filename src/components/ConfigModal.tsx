@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { 
   Volume2, 
   Settings, 
@@ -13,11 +13,16 @@ import {
   Moon,
   Globe,
   Palette,
-  CheckCircle2
+  CheckCircle2,
+  Sparkles,
+  ShieldAlert,
+  RefreshCw
 } from "lucide-react";
-import { SoundConfig, AndonLine, AppTheme, AppLanguage } from "../types";
+import { SoundConfig, AndonLine, AppTheme, AppLanguage, UserProfile } from "../types";
 import { playAndonSound, speakAndonCall } from "../utils/audioAlert";
 import { getTranslation, TranslationKey } from "../utils/i18n";
+import { clearAllTrialDataInDb } from "../lib/firestoreService";
+import { INITIAL_LINES } from "../utils/initialData";
 
 interface ConfigModalProps {
   isOpen: boolean;
@@ -30,6 +35,7 @@ interface ConfigModalProps {
   setTheme: (theme: AppTheme) => void;
   language: AppLanguage;
   setLanguage: (lang: AppLanguage) => void;
+  currentUser?: UserProfile | null;
 }
 
 export const ConfigModal: React.FC<ConfigModalProps> = ({
@@ -43,7 +49,11 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({
   setTheme,
   language,
   setLanguage,
+  currentUser,
 }) => {
+  const [isCleaning, setIsCleaning] = useState(false);
+  const [cleanStatus, setCleanStatus] = useState<string | null>(null);
+
   if (!isOpen) return null;
 
   const t = (key: TranslationKey, params?: Record<string, string | number>) => 
@@ -57,10 +67,29 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({
     const isId = soundConfig.voiceLanguage === "id-ID";
     speakAndonCall(
       isId ? "Line 1 Machining" : "Line 1 Machining",
-      isId ? "Kerusakan Mesin Kritis" : "Critical Machine Breakdown",
-      "OP-20 Spot Weld",
+      isId ? "Kerusakan Mesin" : "Machine Breakdown",
+      "OP-20 Station",
       soundConfig.voiceLanguage
     );
+  };
+
+  const handleCleanData = async () => {
+    if (!window.confirm(t("cleanTrialDataConfirm"))) return;
+    try {
+      setIsCleaning(true);
+      setCleanStatus(null);
+      await clearAllTrialDataInDb(lines.length > 0 ? lines : INITIAL_LINES, currentUser ? {
+        name: currentUser.name,
+        id: currentUser.badgeId,
+        role: currentUser.role,
+      } : undefined);
+      setCleanStatus(t("cleanTrialDataSuccess"));
+    } catch (e) {
+      console.error("Clean error:", e);
+      setCleanStatus("Gagal membersihkan data trial. Cek koneksi.");
+    } finally {
+      setIsCleaning(false);
+    }
   };
 
   const isLight = theme === "light";
@@ -530,6 +559,57 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({
                   />
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* 6. CLEAN TRIAL DATA / SYSTEM RESET */}
+          <div className={`p-4 rounded-2xl border space-y-3 ${
+            isLight ? "bg-red-50/50 border-red-200 text-slate-900" : "bg-red-950/20 border-red-900/40 text-neutral-200"
+          }`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 text-red-500 flex-shrink-0" />
+                <span className="font-bold uppercase tracking-wider text-[11px] text-red-600">
+                  {t("cleanTrialDataTitle")}
+                </span>
+              </div>
+            </div>
+            <p className={`text-xs ${isLight ? "text-slate-600" : "text-neutral-400"}`}>
+              {t("cleanTrialDataDesc")}
+            </p>
+            {cleanStatus && (
+              <div className={`p-2.5 rounded-xl border text-xs font-bold flex items-center gap-2 ${
+                cleanStatus.includes("Gagal")
+                  ? isLight ? "bg-red-100 border-red-300 text-red-800" : "bg-red-950 border-red-800 text-red-300"
+                  : isLight ? "bg-emerald-50 border-emerald-300 text-emerald-800" : "bg-emerald-950 border-emerald-800 text-emerald-300"
+              }`}>
+                <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                <span>{cleanStatus}</span>
+              </div>
+            )}
+            <div>
+              <button
+                type="button"
+                disabled={isCleaning}
+                onClick={handleCleanData}
+                className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all shadow-sm ${
+                  isCleaning
+                    ? "bg-slate-400 text-slate-200 cursor-not-allowed"
+                    : "bg-red-600 hover:bg-red-500 text-white shadow-red-500/20 active:scale-95"
+                }`}
+              >
+                {isCleaning ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Membersihkan...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>{t("cleanTrialDataBtn")}</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>

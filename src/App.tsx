@@ -7,8 +7,7 @@ import { PlantLayoutMap } from "./components/PlantLayoutMap";
 import { AnalyticsReports } from "./components/AnalyticsReports";
 import { MasterDataManager } from "./components/MasterDataManager";
 import { ActivityLogsViewer } from "./components/ActivityLogsViewer";
-import { LoginModal } from "./components/LoginModal";
-import { AIAssistantModal } from "./components/AIAssistantModal";
+import { LoginScreen } from "./components/LoginScreen";
 import { ConfigModal } from "./components/ConfigModal";
 import { CallDetailModal } from "./components/CallDetailModal";
 import { 
@@ -47,7 +46,13 @@ import { playAndonSound, speakAndonCall } from "./utils/audioAlert";
 import { CATEGORIES_DATA } from "./utils/categories";
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<ActiveTab>("main_board");
+  const [activeTab, setActiveTab] = useState<ActiveTab>(() => {
+    const session = loadCurrentSession();
+    if (session) {
+      return session.role === "operator" ? "operator_call" : "main_board";
+    }
+    return "main_board";
+  });
   const [lines, setLines] = useState<AndonLine[]>(loadSavedLines);
   const [calls, setCalls] = useState<AndonCall[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
@@ -59,13 +64,11 @@ export default function App() {
   const [language, setLanguage] = useState<AppLanguage>(loadSavedLanguage);
 
   // User Authority Session
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(loadCurrentSession() || DEFAULT_USERS[0]);
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(loadCurrentSession());
   const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
 
   // Modals
   const [inspectedCall, setInspectedCall] = useState<AndonCall | null>(null);
-  const [aiModalCall, setAiModalCall] = useState<AndonCall | null>(null);
-  const [isAiModalOpen, setIsAiModalOpen] = useState<boolean>(false);
   const [isConfigOpen, setIsConfigOpen] = useState<boolean>(false);
 
   // Initialize and update theme class on HTML element
@@ -231,12 +234,22 @@ export default function App() {
     }
     clearSession();
     setCurrentUser(null);
-    setIsLoginModalOpen(true);
   };
 
   const handleLoginSuccess = (user: UserProfile) => {
     setCurrentUser(user);
-    setIsLoginModalOpen(false);
+    
+    // Auto load selected line from storage if exists
+    const storedLineId = localStorage.getItem("andon_active_login_line_id");
+    if (storedLineId) {
+      setSelectedLineId(storedLineId);
+    }
+
+    if (user.role === "operator") {
+      setActiveTab("operator_call");
+    } else {
+      setActiveTab("main_board");
+    }
   };
 
   // Simulate Emergency Call for Demo
@@ -262,18 +275,19 @@ export default function App() {
     });
   };
 
-  // Quick open AI Troubleshoot
-  const handleOpenAiForCall = (call: AndonCall) => {
-    setAiModalCall(call);
-    setIsAiModalOpen(true);
-  };
-
-  const handleOpenAiGeneric = () => {
-    setAiModalCall(null);
-    setIsAiModalOpen(true);
-  };
-
   const isLight = theme === "light";
+
+  if (!currentUser) {
+    return (
+      <LoginScreen
+        onLoginSuccess={handleLoginSuccess}
+        theme={theme}
+        language={language}
+        setLanguage={setLanguage}
+        lines={lines}
+      />
+    );
+  }
 
   return (
     <div className={`min-h-screen flex flex-col font-sans antialiased selection:bg-amber-500 selection:text-slate-950 transition-colors duration-200 ${
@@ -290,7 +304,6 @@ export default function App() {
         onOpenLogin={() => setIsLoginModalOpen(true)}
         onLogout={handleLogout}
         onOpenConfig={() => setIsConfigOpen(true)}
-        onOpenAiModal={handleOpenAiGeneric}
         onSimulateEmergency={handleSimulateEmergency}
         theme={theme}
         setTheme={setTheme}
@@ -332,7 +345,6 @@ export default function App() {
           <ResponderDashboard
             calls={calls}
             onUpdateCallStatus={handleUpdateCallStatus}
-            onOpenAiForCall={handleOpenAiForCall}
             currentUser={currentUser}
             theme={theme}
             language={language}
@@ -386,26 +398,6 @@ export default function App() {
         call={inspectedCall}
         onClose={() => setInspectedCall(null)}
         onUpdateStatus={handleUpdateCallStatus}
-        onOpenAi={handleOpenAiForCall}
-        theme={theme}
-        language={language}
-      />
-
-      {/* AI TPM & 5-Why Analysis Modal */}
-      <AIAssistantModal
-        isOpen={isAiModalOpen}
-        onClose={() => setIsAiModalOpen(false)}
-        selectedCall={aiModalCall}
-        lines={lines}
-        theme={theme}
-        language={language}
-      />
-
-      {/* User Login & Role Authority Modal */}
-      <LoginModal
-        isOpen={isLoginModalOpen}
-        onClose={() => setIsLoginModalOpen(false)}
-        onLoginSuccess={handleLoginSuccess}
         theme={theme}
         language={language}
       />
@@ -422,6 +414,7 @@ export default function App() {
         setTheme={setTheme}
         language={language}
         setLanguage={setLanguage}
+        currentUser={currentUser}
       />
     </div>
   );

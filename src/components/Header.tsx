@@ -13,7 +13,6 @@ import {
   AlertTriangle, 
   Flame, 
   Activity,
-  Sparkles,
   Layers,
   History,
   User,
@@ -36,7 +35,6 @@ interface HeaderProps {
   onOpenLogin: () => void;
   onLogout: () => void;
   onOpenConfig: () => void;
-  onOpenAiModal: () => void;
   onSimulateEmergency: () => void;
   theme: AppTheme;
   setTheme: (theme: AppTheme) => void;
@@ -54,7 +52,6 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenLogin,
   onLogout,
   onOpenConfig,
-  onOpenAiModal,
   onSimulateEmergency,
   theme,
   setTheme,
@@ -69,6 +66,10 @@ export const Header: React.FC<HeaderProps> = ({
     getTranslation(language, key, params);
 
   const isLight = theme === "light";
+
+  const isOperator = currentUser?.role === "operator";
+  const isLeader = currentUser?.role === "technician" || currentUser?.role === "supervisor";
+  const isAdmin = currentUser?.role === "admin";
 
   useEffect(() => {
     const updateTime = () => {
@@ -168,134 +169,148 @@ export const Header: React.FC<HeaderProps> = ({
         <nav className={`flex items-center p-1 rounded-2xl border text-xs font-medium overflow-x-auto max-w-full ${
           isLight ? "bg-slate-100/90 border-slate-200" : "bg-neutral-950 border-neutral-800"
         }`}>
-          <button
-            id="tab-main-board"
-            onClick={() => setActiveTab("main_board")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all whitespace-nowrap ${
-              activeTab === "main_board"
-                ? isLight
-                  ? "bg-white text-slate-900 font-bold shadow-sm border border-slate-200"
-                  : "bg-neutral-800 text-white font-bold shadow-sm border border-neutral-700"
-                : isLight
-                ? "text-slate-600 hover:text-slate-900 hover:bg-white/50"
-                : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900"
-            }`}
-          >
-            <Tv className="w-3.5 h-3.5 text-cyan-500" />
-            <span>{t("tabMainBoard")}</span>
-            {totalActiveCalls > 0 && (
-              <span className="bg-red-600 text-white text-[10px] px-1.5 py-0.2 rounded-full font-bold">
-                {totalActiveCalls}
-              </span>
-            )}
-          </button>
+          {(isAdmin || isLeader) && (
+            <button
+              id="tab-main-board"
+              onClick={() => setActiveTab("main_board")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all whitespace-nowrap ${
+                activeTab === "main_board"
+                  ? isLight
+                    ? "bg-white text-slate-900 font-bold shadow-sm border border-slate-200"
+                    : "bg-neutral-800 text-white font-bold shadow-sm border border-neutral-700"
+                  : isLight
+                  ? "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+                  : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900"
+              }`}
+            >
+              <Tv className="w-3.5 h-3.5 text-cyan-500" />
+              <span>{t("tabMainBoard")}</span>
+              {totalActiveCalls > 0 && (
+                <span className="bg-red-600 text-white text-[10px] px-1.5 py-0.2 rounded-full font-bold">
+                  {totalActiveCalls}
+                </span>
+              )}
+            </button>
+          )}
 
-          <button
-            id="tab-operator-call"
-            onClick={() => setActiveTab("operator_call")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all whitespace-nowrap ${
-              activeTab === "operator_call"
-                ? isLight
-                  ? "bg-white text-slate-900 font-bold shadow-sm border border-slate-200"
-                  : "bg-neutral-800 text-white font-bold shadow-sm border border-neutral-700"
-                : isLight
-                ? "text-slate-600 hover:text-slate-900 hover:bg-white/50"
-                : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900"
-            }`}
-          >
-            <PhoneCall className="w-3.5 h-3.5 text-amber-500" />
-            <span>{t("tabOperatorCall")}</span>
-          </button>
+          {(isAdmin || isOperator) && (
+            <button
+              id="tab-operator-call"
+              onClick={() => setActiveTab("operator_call")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all whitespace-nowrap ${
+                activeTab === "operator_call"
+                  ? isLight
+                    ? "bg-white text-slate-900 font-bold shadow-sm border border-slate-200"
+                    : "bg-neutral-800 text-white font-bold shadow-sm border border-neutral-700"
+                  : isLight
+                  ? "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+                  : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900"
+              }`}
+            >
+              <PhoneCall className="w-3.5 h-3.5 text-amber-500" />
+              <span>{t("tabOperatorCall")}</span>
+            </button>
+          )}
 
-          <button
-            id="tab-responder-terminal"
-            onClick={() => setActiveTab("responder_terminal")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all whitespace-nowrap ${
-              activeTab === "responder_terminal"
-                ? isLight
-                  ? "bg-white text-slate-900 font-bold shadow-sm border border-slate-200"
-                  : "bg-neutral-800 text-white font-bold shadow-sm border border-neutral-700"
-                : isLight
-                ? "text-slate-600 hover:text-slate-900 hover:bg-white/50"
-                : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900"
-            }`}
-          >
-            <Wrench className="w-3.5 h-3.5 text-blue-500" />
-            <span>{t("tabResponderTerminal")}</span>
-            {totalActiveCalls > 0 && (
-              <span className="bg-amber-500 text-slate-950 text-[10px] px-1.5 py-0.2 rounded-full font-bold">
-                {totalActiveCalls}
-              </span>
-            )}
-          </button>
+          {(isAdmin || isLeader) && (
+            <button
+              id="tab-responder-terminal"
+              onClick={() => setActiveTab("responder_terminal")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all whitespace-nowrap ${
+                activeTab === "responder_terminal"
+                  ? isLight
+                    ? "bg-white text-slate-900 font-bold shadow-sm border border-slate-200"
+                    : "bg-neutral-800 text-white font-bold shadow-sm border border-neutral-700"
+                  : isLight
+                  ? "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+                  : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900"
+              }`}
+            >
+              <Wrench className="w-3.5 h-3.5 text-blue-500" />
+              <span>{t("tabResponderTerminal")}</span>
+              {totalActiveCalls > 0 && (
+                <span className="bg-amber-500 text-slate-950 text-[10px] px-1.5 py-0.2 rounded-full font-bold">
+                  {totalActiveCalls}
+                </span>
+              )}
+            </button>
+          )}
 
-          <button
-            id="tab-plant-map"
-            onClick={() => setActiveTab("plant_map")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all whitespace-nowrap ${
-              activeTab === "plant_map"
-                ? isLight
-                  ? "bg-white text-slate-900 font-bold shadow-sm border border-slate-200"
-                  : "bg-neutral-800 text-white font-bold shadow-sm border border-neutral-700"
-                : isLight
-                ? "text-slate-600 hover:text-slate-900 hover:bg-white/50"
-                : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900"
-            }`}
-          >
-            <Map className="w-3.5 h-3.5 text-emerald-500" />
-            <span>{t("tabPlantMap")}</span>
-          </button>
+          {(isAdmin || isLeader) && (
+            <button
+              id="tab-plant-map"
+              onClick={() => setActiveTab("plant_map")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all whitespace-nowrap ${
+                activeTab === "plant_map"
+                  ? isLight
+                    ? "bg-white text-slate-900 font-bold shadow-sm border border-slate-200"
+                    : "bg-neutral-800 text-white font-bold shadow-sm border border-neutral-700"
+                  : isLight
+                  ? "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+                  : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900"
+              }`}
+            >
+              <Map className="w-3.5 h-3.5 text-emerald-500" />
+              <span>{t("tabPlantMap")}</span>
+            </button>
+          )}
 
-          <button
-            id="tab-master-data"
-            onClick={() => setActiveTab("master_data")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all whitespace-nowrap ${
-              activeTab === "master_data"
-                ? isLight
-                  ? "bg-white text-slate-900 font-bold shadow-sm border border-slate-200"
-                  : "bg-neutral-800 text-white font-bold shadow-sm border border-neutral-700"
-                : isLight
-                ? "text-slate-600 hover:text-slate-900 hover:bg-white/50"
-                : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900"
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5 text-cyan-600" />
-            <span>{t("tabMasterData")}</span>
-          </button>
+          {isAdmin && (
+            <button
+              id="tab-master-data"
+              onClick={() => setActiveTab("master_data")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all whitespace-nowrap ${
+                activeTab === "master_data"
+                  ? isLight
+                    ? "bg-white text-slate-900 font-bold shadow-sm border border-slate-200"
+                    : "bg-neutral-800 text-white font-bold shadow-sm border border-neutral-700"
+                  : isLight
+                  ? "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+                  : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900"
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5 text-cyan-600" />
+              <span>{t("tabMasterData")}</span>
+            </button>
+          )}
 
-          <button
-            id="tab-activity-logs"
-            onClick={() => setActiveTab("activity_logs")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all whitespace-nowrap ${
-              activeTab === "activity_logs"
-                ? isLight
-                  ? "bg-white text-slate-900 font-bold shadow-sm border border-slate-200"
-                  : "bg-neutral-800 text-white font-bold shadow-sm border border-neutral-700"
-                : isLight
-                ? "text-slate-600 hover:text-slate-900 hover:bg-white/50"
-                : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900"
-            }`}
-          >
-            <History className="w-3.5 h-3.5 text-amber-500" />
-            <span>{t("tabActivityLogs")}</span>
-          </button>
+          {(isAdmin || isLeader) && (
+            <button
+              id="tab-activity-logs"
+              onClick={() => setActiveTab("activity_logs")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all whitespace-nowrap ${
+                activeTab === "activity_logs"
+                  ? isLight
+                    ? "bg-white text-slate-900 font-bold shadow-sm border border-slate-200"
+                    : "bg-neutral-800 text-white font-bold shadow-sm border border-neutral-700"
+                  : isLight
+                  ? "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+                  : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900"
+              }`}
+            >
+              <History className="w-3.5 h-3.5 text-amber-500" />
+              <span>{t("tabActivityLogs")}</span>
+            </button>
+          )}
 
-          <button
-            id="tab-analytics"
-            onClick={() => setActiveTab("analytics_reports")}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all whitespace-nowrap ${
-              activeTab === "analytics_reports"
-                ? isLight
-                  ? "bg-white text-slate-900 font-bold shadow-sm border border-slate-200"
-                  : "bg-neutral-800 text-white font-bold shadow-sm border border-neutral-700"
-                : isLight
-                ? "text-slate-600 hover:text-slate-900 hover:bg-white/50"
-                : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900"
-            }`}
-          >
-            <BarChart3 className="w-3.5 h-3.5 text-purple-500" />
-            <span>{t("tabAnalytics")}</span>
-          </button>
+          {(isAdmin || isLeader) && (
+            <button
+              id="tab-analytics"
+              onClick={() => setActiveTab("analytics_reports")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all whitespace-nowrap ${
+                activeTab === "analytics_reports"
+                  ? isLight
+                    ? "bg-white text-slate-900 font-bold shadow-sm border border-slate-200"
+                    : "bg-neutral-800 text-white font-bold shadow-sm border border-neutral-700"
+                  : isLight
+                  ? "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+                  : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900"
+              }`}
+            >
+              <BarChart3 className="w-3.5 h-3.5 text-purple-500" />
+              <span>{t("tabAnalytics")}</span>
+            </button>
+          )}
         </nav>
 
         {/* Right Action Tools: Language, Theme, Sound, Config, Clock */}
@@ -393,21 +408,6 @@ export const Header: React.FC<HeaderProps> = ({
               <span>{t("authorityLogin")}</span>
             </button>
           )}
-
-          {/* AI Troubleshooting Button */}
-          <button
-            id="btn-ai-advisor"
-            onClick={onOpenAiModal}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all shadow-sm border ${
-              isLight
-                ? "bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border-indigo-200"
-                : "bg-gradient-to-r from-indigo-950 to-purple-950 hover:from-indigo-900 hover:to-purple-900 text-purple-200 border-purple-500/40"
-            }`}
-            title={t("aiAdvisor")}
-          >
-            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-            <span className="hidden xl:inline">AI 5-Why</span>
-          </button>
 
           {/* Quick Simulation Trigger */}
           <button

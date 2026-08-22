@@ -9,10 +9,18 @@ import {
   TrendingUp, 
   Activity, 
   Zap,
-  Check
+  Check,
+  PhoneCall,
+  Tv,
+  Wrench,
+  Database,
+  HelpCircle,
+  ChevronDown,
+  ChevronUp,
+  Boxes
 } from "lucide-react";
 import { AndonCall, AndonLine, AppTheme, AppLanguage } from "../types";
-import { CATEGORIES_DATA } from "../utils/categories";
+import { CATEGORIES_DATA, normalizeCategoryToPrimary } from "../utils/categories";
 import { formatDuration, formatTimestamp } from "../utils/storage";
 import { getTranslation, TranslationKey } from "../utils/i18n";
 
@@ -34,11 +42,20 @@ export const MainAndonBoard: React.FC<MainAndonBoardProps> = ({
   language = "id",
 }) => {
   const [timerTick, setTimerTick] = useState(Date.now());
+  const [showGuide, setShowGuide] = useState<boolean>(() => {
+    return localStorage.getItem("andon_show_guide") !== "false";
+  });
 
   const t = (key: TranslationKey, params?: Record<string, string | number>) => 
     getTranslation(language, key, params);
 
   const isLight = theme === "light";
+
+  const toggleGuide = () => {
+    const nextState = !showGuide;
+    setShowGuide(nextState);
+    localStorage.setItem("andon_show_guide", String(nextState));
+  };
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -63,6 +80,130 @@ export const MainAndonBoard: React.FC<MainAndonBoardProps> = ({
 
   return (
     <div className="space-y-6 pb-12">
+      {/* Interactive Workflow Guide for New Users */}
+      <div className={`border rounded-2xl p-4 sm:p-5 transition-all shadow-sm ${
+        isLight 
+          ? "bg-slate-50/80 border-slate-200 text-slate-900" 
+          : "bg-neutral-900/90 border-neutral-800 text-neutral-100"
+      }`}>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5">
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold ${
+              isLight ? "bg-amber-100 text-amber-800" : "bg-amber-500/20 text-amber-400"
+            }`}>
+              <HelpCircle className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-xs sm:text-sm font-bold tracking-tight">
+                {t("quickGuideTitle")}
+              </h3>
+              <p className={`text-[11px] ${isLight ? "text-slate-500" : "text-neutral-400"}`}>
+                {t("quickGuideSubtitle")}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={toggleGuide}
+            className={`text-xs font-semibold px-2.5 py-1 rounded-xl flex items-center gap-1 border transition-colors ${
+              isLight 
+                ? "bg-white hover:bg-slate-100 border-slate-200 text-slate-700" 
+                : "bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-neutral-300"
+            }`}
+          >
+            <span>{showGuide ? t("hideGuide") : t("showGuide")}</span>
+            {showGuide ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
+        </div>
+
+        {showGuide && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4 pt-3 border-t border-dashed border-slate-200 dark:border-neutral-800">
+            {/* Step 1 */}
+            <div className={`p-3 rounded-xl border flex flex-col justify-between ${
+              isLight ? "bg-white border-slate-200/80 shadow-xs" : "bg-neutral-950 border-neutral-800/80"
+            }`}>
+              <div>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <div className="w-6 h-6 rounded-lg bg-amber-500/15 text-amber-600 flex items-center justify-center">
+                    <PhoneCall className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="text-xs font-bold">{t("step1Title")}</span>
+                </div>
+                <p className={`text-[11px] leading-relaxed ${isLight ? "text-slate-600" : "text-neutral-400"}`}>
+                  {t("step1Desc")}
+                </p>
+              </div>
+              <button
+                onClick={() => onNavigateToCall(lines[0]?.id || "LINE-1")}
+                className={`mt-2.5 text-[11px] font-bold text-amber-700 dark:text-amber-400 hover:underline flex items-center gap-1`}
+              >
+                <span>Buka Terminal Operator</span>
+                <ArrowRight className="w-3 h-3" />
+              </button>
+            </div>
+
+            {/* Step 2 */}
+            <div className={`p-3 rounded-xl border flex flex-col justify-between ${
+              isLight ? "bg-white border-slate-200/80 shadow-xs" : "bg-neutral-950 border-neutral-800/80"
+            }`}>
+              <div>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <div className="w-6 h-6 rounded-lg bg-red-500/15 text-red-600 flex items-center justify-center">
+                    <Tv className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="text-xs font-bold">{t("step2Title")}</span>
+                </div>
+                <p className={`text-[11px] leading-relaxed ${isLight ? "text-slate-600" : "text-neutral-400"}`}>
+                  {t("step2Desc")}
+                </p>
+              </div>
+              <span className={`mt-2.5 text-[11px] font-medium ${isLight ? "text-slate-400" : "text-neutral-500"}`}>
+                Real-time WebSocket & Audio
+              </span>
+            </div>
+
+            {/* Step 3 */}
+            <div className={`p-3 rounded-xl border flex flex-col justify-between ${
+              isLight ? "bg-white border-slate-200/80 shadow-xs" : "bg-neutral-950 border-neutral-800/80"
+            }`}>
+              <div>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <div className="w-6 h-6 rounded-lg bg-blue-500/15 text-blue-600 flex items-center justify-center">
+                    <Wrench className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="text-xs font-bold">{t("step3Title")}</span>
+                </div>
+                <p className={`text-[11px] leading-relaxed ${isLight ? "text-slate-600" : "text-neutral-400"}`}>
+                  {t("step3Desc")}
+                </p>
+              </div>
+              <span className={`mt-2.5 text-[11px] font-medium ${isLight ? "text-slate-400" : "text-neutral-500"}`}>
+                Penanganan cepat di lini
+              </span>
+            </div>
+
+            {/* Step 4 */}
+            <div className={`p-3 rounded-xl border flex flex-col justify-between ${
+              isLight ? "bg-white border-slate-200/80 shadow-xs" : "bg-neutral-950 border-neutral-800/80"
+            }`}>
+              <div>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <div className="w-6 h-6 rounded-lg bg-emerald-500/15 text-emerald-600 flex items-center justify-center">
+                    <Database className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="text-xs font-bold">{t("step4Title")}</span>
+                </div>
+                <p className={`text-[11px] leading-relaxed ${isLight ? "text-slate-600" : "text-neutral-400"}`}>
+                  {t("step4Desc")}
+                </p>
+              </div>
+              <span className={`mt-2.5 text-[11px] font-medium ${isLight ? "text-slate-400" : "text-neutral-500"}`}>
+                Firestore Cloud & Export Excel
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Top KPI Cards (Andon KPI Header) */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         {/* Plant Status / Running Lines */}
@@ -230,8 +371,14 @@ export const MainAndonBoard: React.FC<MainAndonBoardProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {lines.map((line) => {
             const lineCalls = activeCalls.filter((c) => c.lineId === line.id);
-            const hasStop = lineCalls.some((c) => c.isLineStopped);
-            const hasWarning = lineCalls.length > 0 && !hasStop;
+            
+            // 3-button standard: RED, YELLOW, GREEN
+            const hasRed = lineCalls.some((c) => normalizeCategoryToPrimary(c.category) === "abnormal_machine");
+            const hasYellow = lineCalls.some((c) => normalizeCategoryToPrimary(c.category) === "leader_call");
+            const hasGreenCall = lineCalls.some((c) => normalizeCategoryToPrimary(c.category) === "material_support");
+
+            const hasStop = hasRed || lineCalls.some((c) => c.isLineStopped);
+            const hasWarning = (hasYellow || hasGreenCall || lineCalls.length > 0) && !hasStop;
             const primaryCall = lineCalls[0];
 
             let borderClass = isLight 
@@ -249,24 +396,34 @@ export const MainAndonBoard: React.FC<MainAndonBoardProps> = ({
               </span>
             );
 
-            if (hasStop) {
+            if (hasRed) {
               borderClass = isLight
                 ? "border-red-400 bg-red-50/40 shadow-md shadow-red-500/10"
                 : "border-red-500/80 bg-red-950/20 shadow-lg shadow-red-950/40";
               statusBadge = (
                 <span className="bg-red-600 text-white text-xs px-2.5 py-0.5 rounded-lg font-bold flex items-center gap-1 animate-pulse shadow-sm">
                   <Flame className="w-3.5 h-3.5" />
-                  {t("criticalStatus")}
+                  ABNORMAL MESIN
                 </span>
               );
-            } else if (hasWarning) {
+            } else if (hasYellow) {
               borderClass = isLight
                 ? "border-amber-300 bg-amber-50/40 shadow-sm"
                 : "border-amber-500/60 bg-amber-950/15";
               statusBadge = (
                 <span className="bg-amber-500 text-slate-950 text-xs px-2.5 py-0.5 rounded-lg font-black flex items-center gap-1 shadow-sm">
                   <AlertTriangle className="w-3.5 h-3.5" />
-                  {t("warningStatus")} ({lineCalls.length})
+                  CALLING LEADER
+                </span>
+              );
+            } else if (hasGreenCall) {
+              borderClass = isLight
+                ? "border-emerald-300 bg-emerald-50/40 shadow-sm"
+                : "border-emerald-500/60 bg-emerald-950/15";
+              statusBadge = (
+                <span className="bg-emerald-600 text-white text-xs px-2.5 py-0.5 rounded-lg font-bold flex items-center gap-1 shadow-sm">
+                  <Boxes className="w-3.5 h-3.5" />
+                  CALLING MATERIAL
                 </span>
               );
             }
@@ -303,32 +460,34 @@ export const MainAndonBoard: React.FC<MainAndonBoardProps> = ({
                   <div className={`border p-1 rounded-xl flex flex-col items-center gap-1 shadow-inner ${
                     isLight ? "bg-slate-900 border-slate-800" : "bg-neutral-950 border-neutral-800"
                   }`}>
-                    {/* Red Lamp */}
+                    {/* Red Lamp: Abnormal Mesin */}
                     <div
                       className={`w-3.5 h-3.5 rounded-full transition-all ${
-                        hasStop
-                          ? "bg-red-500 shadow-[0_0_12px_#ef4444] animate-pulse scale-110"
-                          : "bg-red-950/40 opacity-40"
+                        hasRed
+                          ? "bg-red-500 shadow-[0_0_14px_#ef4444] animate-pulse scale-110"
+                          : "bg-red-950/40 opacity-30"
                       }`}
-                      title="Red: Line Stop"
+                      title="Red: Abnormal Mesin"
                     />
-                    {/* Yellow Lamp */}
+                    {/* Yellow Lamp: Calling Leader */}
                     <div
                       className={`w-3.5 h-3.5 rounded-full transition-all ${
-                        hasWarning
-                          ? "bg-amber-400 shadow-[0_0_12px_#f59e0b] animate-pulse scale-110"
-                          : "bg-amber-950/40 opacity-40"
+                        hasYellow
+                          ? "bg-amber-400 shadow-[0_0_14px_#f59e0b] animate-pulse scale-110"
+                          : "bg-amber-950/40 opacity-30"
                       }`}
-                      title="Yellow: Material / Defect Call"
+                      title="Yellow: Calling Leader"
                     />
-                    {/* Green Lamp */}
+                    {/* Green Lamp: Calling Material or Normal Production */}
                     <div
                       className={`w-3.5 h-3.5 rounded-full transition-all ${
-                        !hasStop && !hasWarning
-                          ? "bg-emerald-500 shadow-[0_0_10px_#10b981]"
-                          : "bg-emerald-950/30 opacity-30"
+                        hasGreenCall
+                          ? "bg-emerald-500 shadow-[0_0_14px_#10b981] animate-pulse scale-110 border border-white/20"
+                          : lineCalls.length === 0
+                          ? "bg-emerald-500 shadow-[0_0_8px_#10b981]/50"
+                          : "bg-emerald-950/30 opacity-20"
                       }`}
-                      title="Green: Normal Production"
+                      title={hasGreenCall ? "Green: Calling Material Support" : "Green: Normal Production"}
                     />
                   </div>
                 </div>

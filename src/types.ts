@@ -12,6 +12,9 @@ export interface UserProfile {
 }
 
 export type CallCategory = 
+  | 'abnormal_machine' 
+  | 'leader_call' 
+  | 'material_support' 
   | 'machine_breakdown' 
   | 'material_shortage' 
   | 'quality_defect' 

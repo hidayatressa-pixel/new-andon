@@ -1,7 +1,4 @@
 import React from "react";
-import { 
-  Sparkles, 
-} from "lucide-react";
 import { AndonCall, CallStatus, AppTheme, AppLanguage } from "../types";
 import { CATEGORIES_DATA } from "../utils/categories";
 import { formatDuration, formatTimestamp } from "../utils/storage";
@@ -11,7 +8,6 @@ interface CallDetailModalProps {
   call: AndonCall | null;
   onClose: () => void;
   onUpdateStatus: (callId: string, status: CallStatus, extra?: Partial<AndonCall>) => void;
-  onOpenAi: (call: AndonCall) => void;
   theme?: AppTheme;
   language?: AppLanguage;
 }
@@ -20,7 +16,6 @@ export const CallDetailModal: React.FC<CallDetailModalProps> = ({
   call,
   onClose,
   onUpdateStatus,
-  onOpenAi,
   theme = "light",
   language = "id",
 }) => {
@@ -152,48 +147,31 @@ export const CallDetailModal: React.FC<CallDetailModalProps> = ({
         </div>
 
         {/* Footer Actions */}
-        <div className={`border-t pt-3 flex flex-wrap items-center justify-between gap-2 ${isLight ? "border-slate-200" : "border-neutral-800"}`}>
+        <div className={`border-t pt-3 flex items-center justify-end gap-2 ${isLight ? "border-slate-200" : "border-neutral-800"}`}>
+          {call.status === "calling" && (
+            <button
+              onClick={() => {
+                onUpdateStatus(call.id, "acknowledged", {
+                  acknowledgedAt: Date.now(),
+                  acknowledgedBy: "Responder Shift 1",
+                });
+                onClose();
+              }}
+              className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-500/20"
+            >
+              {t("respondCallBtn")}
+            </button>
+          )}
           <button
-            onClick={() => {
-              onClose();
-              onOpenAi(call);
-            }}
-            className={`px-3 py-2 rounded-xl border text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all ${
+            onClick={onClose}
+            className={`px-4 py-2 rounded-xl font-bold text-xs border transition-all ${
               isLight
-                ? "bg-purple-50 hover:bg-purple-100 border-purple-200 text-purple-800"
-                : "bg-purple-950 hover:bg-purple-900 border-purple-500/40 text-purple-200"
+                ? "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300"
+                : "bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border-neutral-700"
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-            <span>AI 5-Why Analysis</span>
+            {language === "en" ? "Close" : "Tutup"}
           </button>
-
-          <div className="flex items-center gap-2">
-            {call.status === "calling" && (
-              <button
-                onClick={() => {
-                  onUpdateStatus(call.id, "acknowledged", {
-                    acknowledgedAt: Date.now(),
-                    acknowledgedBy: "Responder Shift 1",
-                  });
-                  onClose();
-                }}
-                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-md shadow-blue-500/20"
-              >
-                {t("respondCallBtn")}
-              </button>
-            )}
-            <button
-              onClick={onClose}
-              className={`px-4 py-2 rounded-xl font-bold text-xs border transition-all ${
-                isLight
-                  ? "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300"
-                  : "bg-neutral-800 hover:bg-neutral-700 text-neutral-300 border-neutral-700"
-              }`}
-            >
-              {language === "en" ? "Close" : "Tutup"}
-            </button>
-          </div>
         </div>
       </div>
     </div>

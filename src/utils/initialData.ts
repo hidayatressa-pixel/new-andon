@@ -1,4 +1,4 @@
-import { AndonLine, AndonCall, SoundConfig, MasterMachine, MasterWorkstation } from "../types";
+import { AndonLine, AndonCall, SoundConfig, MasterMachine, MasterWorkstation, UserProfile } from "../types";
 
 // Empty initial calls (Clean slate as requested by user)
 export const INITIAL_CALLS: AndonCall[] = [];
@@ -98,6 +98,49 @@ export const INITIAL_MACHINES: MasterMachine[] = [
   { id: "MCH-004", code: "ROBOT-WELD-A1", name: "Fanuc 6-Axis Spot Welding Arm", lineId: "LINE-3", lineName: "Line 3: Welding", workstation: "OP-20 Robot Arm 1 Spot", status: "active" },
   { id: "MCH-005", code: "OVEN-CURING-01", name: "Continuous Thermal Curing Oven", lineId: "LINE-4", lineName: "Line 4: Painting", workstation: "OP-40 Curing Oven 180C", status: "active" },
   { id: "MCH-006", code: "TORQUE-TX4-01", name: "Atlas Copco Digital Nutrunner", lineId: "LINE-5", lineName: "Line 5: Assembly", workstation: "OP-30 Torque Tightening", status: "active" },
+];
+
+export const INITIAL_OPERATORS: UserProfile[] = [
+  {
+    id: "OP-1001",
+    name: "Agus Pratama",
+    badgeId: "OP-1001",
+    role: "operator",
+    department: "Machining",
+    pin: "1234",
+    lineAccess: ["LINE-1", "LINE-2"],
+    email: "agus.op@factory.local"
+  },
+  {
+    id: "TECH-2001",
+    name: "Rudi Hermawan (Teknisi Maintenance)",
+    badgeId: "TECH-2001",
+    role: "technician",
+    department: "Maintenance & Tooling",
+    pin: "1234",
+    lineAccess: ["*"],
+    email: "rudi.tech@factory.local"
+  },
+  {
+    id: "SPV-3001",
+    name: "Budi Santoso (Production Supervisor)",
+    badgeId: "SPV-3001",
+    role: "supervisor",
+    department: "Production Control",
+    pin: "1234",
+    lineAccess: ["*"],
+    email: "budi.spv@factory.local"
+  },
+  {
+    id: "USR-ressa20",
+    name: "Ressa Hidayat (Administrator)",
+    badgeId: "ressa20",
+    role: "admin",
+    department: "Plant Management & IT",
+    pin: "020420",
+    lineAccess: ["*"],
+    email: "hidayatressa@gmail.com"
+  }
 ];
 
 export const DEFAULT_SOUND_CONFIG: SoundConfig = {

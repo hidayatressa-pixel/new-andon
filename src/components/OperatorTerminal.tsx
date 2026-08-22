@@ -2,19 +2,17 @@ import React, { useState, useEffect } from "react";
 import { 
   Flame, 
   Boxes, 
-  Wrench, 
-  ShieldAlert, 
   UserCheck, 
-  AlertTriangle, 
   CheckCircle, 
   PhoneCall, 
   Clock, 
-  User,
-  Shield,
-  Layers
+  User, 
+  Layers,
+  AlertOctagon,
+  Radio
 } from "lucide-react";
 import { AndonCall, AndonLine, CallCategory, CallSeverity, UserProfile, AppTheme, AppLanguage } from "../types";
-import { CATEGORIES_DATA } from "../utils/categories";
+import { CATEGORIES_DATA, PRIMARY_ANDON_BUTTONS, normalizeCategoryToPrimary } from "../utils/categories";
 import { formatDuration } from "../utils/storage";
 import { getTranslation, TranslationKey } from "../utils/i18n";
 
@@ -59,7 +57,8 @@ export const OperatorTerminal: React.FC<OperatorTerminalProps> = ({
   const [selectedStation, setSelectedStation] = useState<string>(
     currentLine?.workstations?.[0] || "OP-10 Station"
   );
-  const [selectedCategory, setSelectedCategory] = useState<CallCategory>("machine_breakdown");
+  // Default to MERAH (abnormal_machine)
+  const [selectedCategory, setSelectedCategory] = useState<CallCategory>("abnormal_machine");
   const [severity, setSeverity] = useState<CallSeverity>("critical_line_stop");
   const [isLineStopped, setIsLineStopped] = useState<boolean>(true);
   const [operatorName, setOperatorName] = useState<string>(
@@ -94,6 +93,13 @@ export const OperatorTerminal: React.FC<OperatorTerminalProps> = ({
     }
   }, [currentLine, selectedStation]);
 
+  // Force reset station selection when active line ID changes (especially helpful after uploading real factory data)
+  useEffect(() => {
+    if (currentLine?.workstations && currentLine.workstations.length > 0) {
+      setSelectedStation(currentLine.workstations[0]);
+    }
+  }, [currentLine?.id]);
+
   const existingCall = activeCalls.find(
     (c) => c.lineId === currentLine?.id && c.workstation === selectedStation && c.status !== "resolved"
   );
@@ -106,17 +112,18 @@ export const OperatorTerminal: React.FC<OperatorTerminalProps> = ({
     }
   };
 
-  const handleQuickCategorySelect = (cat: CallCategory) => {
+  const handleSelectCategory = (cat: CallCategory) => {
     setSelectedCategory(cat);
-    if (cat === "machine_breakdown" || cat === "safety_alert") {
+    if (cat === "abnormal_machine" || cat === "machine_breakdown") {
       setIsLineStopped(true);
       setSeverity("critical_line_stop");
-    } else if (cat === "material_shortage" || cat === "quality_defect") {
+    } else if (cat === "leader_call" || cat === "quality_defect") {
       setIsLineStopped(false);
       setSeverity("major");
     } else {
+      // material_support
       setIsLineStopped(false);
-      setSeverity("minor");
+      setSeverity("major");
     }
   };
 
@@ -125,12 +132,19 @@ export const OperatorTerminal: React.FC<OperatorTerminalProps> = ({
 
     let autoDesc = description.trim();
     if (!autoDesc) {
-      const catLabel = language === "en" 
-        ? CATEGORIES_DATA[selectedCategory]?.labelEn || selectedCategory
-        : CATEGORIES_DATA[selectedCategory]?.label || selectedCategory;
-      autoDesc = language === "en"
-        ? `Andon Call for ${catLabel} at ${selectedStation}. Requires immediate responder attention.`
-        : `Panggilan ${catLabel} pada ${selectedStation}. Memerlukan penanganan segera di lantai produksi.`;
+      if (selectedCategory === "abnormal_machine" || selectedCategory === "machine_breakdown") {
+        autoDesc = language === "en"
+          ? `[RED] Machine abnormality / breakdown reported at ${selectedStation}. Line halted for maintenance.`
+          : `[MERAH] Abnormal Mesin / Kerusakan dilaporkan pada ${selectedStation}. Butuh penanganan teknisi mesin segera.`;
+      } else if (selectedCategory === "leader_call" || selectedCategory === "quality_defect") {
+        autoDesc = language === "en"
+          ? `[YELLOW] Calling Leader: Quality, process, or productivity abnormality at ${selectedStation}.`
+          : `[KUNING] Calling Leader: Terjadi kendala kualitas, proses, atau produktivitas di ${selectedStation}.`;
+      } else {
+        autoDesc = language === "en"
+          ? `[GREEN] Calling Material Support: Material shortage or abnormality at ${selectedStation}.`
+          : `[HIJAU] Calling Material Support: Permintaan pengadaan material / abnormality part di ${selectedStation}.`;
+      }
     }
 
     onSubmitCall({
@@ -154,6 +168,10 @@ export const OperatorTerminal: React.FC<OperatorTerminalProps> = ({
     }, 4000);
   };
 
+  const activeCategoryItem = PRIMARY_ANDON_BUTTONS.find(
+    (b) => b.id === selectedCategory || normalizeCategoryToPrimary(selectedCategory) === b.id
+  ) || PRIMARY_ANDON_BUTTONS[0];
+
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-12">
       {/* Header Info */}
@@ -172,7 +190,9 @@ export const OperatorTerminal: React.FC<OperatorTerminalProps> = ({
                 {t("operatorTerminalTitle")}
               </h2>
               <p className={`text-xs ${isLight ? "text-slate-500" : "text-neutral-400"}`}>
-                {t("operatorTerminalSubtitle")}
+                {language === "en" 
+                  ? "Select line & station, then press 1 of the 3 primary Andon buttons below."
+                  : "Pilih lini & stasiun, lalu tekan salah satu dari 3 tombol panggilan Andon utama di bawah."}
               </p>
             </div>
           </div>
@@ -289,13 +309,14 @@ export const OperatorTerminal: React.FC<OperatorTerminalProps> = ({
             <label className={`block text-xs font-bold uppercase tracking-wider mb-2.5 ${
               isLight ? "text-slate-700" : "text-neutral-300"
             }`}>
-              1. {t("selectWorkstation")} {currentLine.name}
+              1. {t("selectWorkstation")} - {currentLine.name}
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {(currentLine.workstations || ["OP-10 Station"]).map((st) => (
                 <button
                   key={st}
                   type="button"
+                  id={`btn-station-${st.replace(/\s+/g, '-').toLowerCase()}`}
                   onClick={() => setSelectedStation(st)}
                   className={`p-3 rounded-2xl text-xs font-bold text-left transition-all border ${
                     selectedStation === st
@@ -314,178 +335,179 @@ export const OperatorTerminal: React.FC<OperatorTerminalProps> = ({
             </div>
           </div>
 
-          {/* 6 Giant Andon Category Push-Buttons */}
-          <div className={`border rounded-3xl p-5 shadow-sm transition-colors ${
+          {/* 3 Physical-Style Andon Push-Buttons (Red, Yellow, Green) */}
+          <div className={`border rounded-3xl p-6 shadow-sm transition-colors space-y-4 ${
             isLight ? "bg-white border-slate-200" : "bg-neutral-900 border-neutral-800"
           }`}>
-            <div className="flex items-center justify-between mb-3">
-              <label className={`block text-xs font-bold uppercase tracking-wider ${
-                isLight ? "text-slate-700" : "text-neutral-300"
+            <div className="flex items-center justify-between">
+              <div>
+                <label className={`block text-xs font-black uppercase tracking-wider ${
+                  isLight ? "text-slate-800" : "text-neutral-200"
+                }`}>
+                  2. {language === "en" ? "Select Andon Call Button (3 Core Buttons)" : "Pilih Tombol Panggilan Operator (3 Tombol Utama)"}
+                </label>
+                <p className={`text-xs ${isLight ? "text-slate-500" : "text-neutral-400"}`}>
+                  {language === "en" ? "Touch the button below to arm and activate call category" : "Tekan tombol di bawah untuk memilih kategori masalah"}
+                </p>
+              </div>
+              <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border ${
+                isLight ? "bg-slate-100 border-slate-200 text-slate-700" : "bg-neutral-950 border-neutral-800 text-neutral-400"
               }`}>
-                2. {t("selectProblemCategory")}
-              </label>
-              <span className={`text-xs font-bold ${isLight ? "text-amber-700" : "text-amber-400"}`}>Lean TPM Standard</span>
+                Shopfloor 3-Button Standard
+              </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              {/* Machine Breakdown */}
+            {/* 3 Buttons Grid */}
+            <div className="grid grid-cols-1 gap-4">
+              {/* BUTTON 1: MERAH = ABNORMAL MESIN */}
               <button
                 type="button"
-                id="btn-cat-machine"
-                onClick={() => handleQuickCategorySelect("machine_breakdown")}
-                className={`p-4 rounded-2xl text-left border-2 transition-all flex items-start gap-3.5 relative overflow-hidden group cursor-pointer ${
-                  selectedCategory === "machine_breakdown"
+                id="btn-cat-abnormal-machine"
+                onClick={() => handleSelectCategory("abnormal_machine")}
+                className={`p-5 rounded-2xl text-left border-2 transition-all flex items-start gap-4 relative overflow-hidden group cursor-pointer ${
+                  selectedCategory === "abnormal_machine" || selectedCategory === "machine_breakdown"
                     ? isLight
-                      ? "bg-red-50 border-red-500 shadow-md ring-2 ring-red-500/20 text-slate-900"
-                      : "bg-red-950/50 border-red-500 shadow-lg ring-2 ring-red-500/40 text-white"
+                      ? "bg-red-50/80 border-red-500 shadow-lg ring-4 ring-red-500/25 text-slate-900"
+                      : "bg-red-950/40 border-red-500 shadow-xl ring-4 ring-red-500/35 text-white"
                     : isLight
-                    ? "bg-slate-50/60 border-slate-200 hover:border-red-300"
-                    : "bg-neutral-950/60 border-neutral-800 hover:border-red-500/40"
+                    ? "bg-slate-50 border-slate-200 hover:border-red-400 hover:bg-red-50/30"
+                    : "bg-neutral-950 border-neutral-800 hover:border-red-500/50 hover:bg-neutral-900"
                 }`}
               >
-                <div className="p-3 rounded-xl bg-red-600 text-white shadow-md group-hover:scale-105 transition-transform flex-shrink-0">
-                  <Flame className="w-6 h-6" />
+                {/* Visual Pill Indicator */}
+                <div className="p-3.5 rounded-2xl bg-red-600 text-white shadow-md flex-shrink-0 group-hover:scale-105 transition-transform flex items-center justify-center">
+                  <Flame className="w-7 h-7" />
                 </div>
-                <div>
-                  <div className={`font-black text-sm ${isLight ? "text-slate-900" : "text-white"}`}>{t("machineBreakdown")}</div>
-                  <div className="text-xs text-red-600 font-bold">Machine Breakdown / Line Stop</div>
-                  <div className={`text-[11px] mt-1 ${isLight ? "text-slate-600" : "text-neutral-400"}`}>
-                    {language === "en" ? "Sensor error, conveyor jam, motor overheating, electrical trip." : "Sensor error, hidrolik mati, konveyor macet, electrical trip."}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="bg-red-600 text-white font-mono font-black text-xs px-2.5 py-0.5 rounded-md uppercase tracking-wider">
+                      {language === "en" ? "RED BUTTON" : "TOMBOL MERAH"}
+                    </span>
+                    <span className="text-xs text-red-600 font-bold">
+                      {language === "en" ? "LINE STOP TRIGGER" : "PRIORITAS TINGGI / STOP"}
+                    </span>
+                  </div>
+                  <div className={`text-base font-black tracking-tight ${isLight ? "text-slate-900" : "text-white"}`}>
+                    {language === "en" ? "MACHINE ABNORMALITY" : "ABNORMAL MESIN"}
+                  </div>
+                  <div className={`text-xs mt-1 leading-relaxed ${isLight ? "text-slate-600" : "text-neutral-300"}`}>
+                    {language === "en"
+                      ? "Machine breakdown, electrical/mechanical fault, sensor failure, or critical line stop."
+                      : "Kerusakan Mesin / Line Stop / Kendala Mekanikal, Elektrikal & Sensor Rusak."}
+                  </div>
+                </div>
+                {/* Active Radio Pill */}
+                <div className="flex-shrink-0 pt-1">
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                    selectedCategory === "abnormal_machine" || selectedCategory === "machine_breakdown"
+                      ? "border-red-600 bg-red-600 text-white"
+                      : isLight ? "border-slate-300 bg-white" : "border-neutral-700 bg-neutral-900"
+                  }`}>
+                    {(selectedCategory === "abnormal_machine" || selectedCategory === "machine_breakdown") && (
+                      <span className="w-2 h-2 rounded-full bg-white" />
+                    )}
                   </div>
                 </div>
               </button>
 
-              {/* Material Shortage */}
+              {/* BUTTON 2: KUNING = CALLING LEADER */}
               <button
                 type="button"
-                id="btn-cat-material"
-                onClick={() => handleQuickCategorySelect("material_shortage")}
-                className={`p-4 rounded-2xl text-left border-2 transition-all flex items-start gap-3.5 relative overflow-hidden group cursor-pointer ${
-                  selectedCategory === "material_shortage"
+                id="btn-cat-calling-leader"
+                onClick={() => handleSelectCategory("leader_call")}
+                className={`p-5 rounded-2xl text-left border-2 transition-all flex items-start gap-4 relative overflow-hidden group cursor-pointer ${
+                  selectedCategory === "leader_call" || selectedCategory === "quality_defect" || selectedCategory === "supervisor_call"
                     ? isLight
-                      ? "bg-amber-50 border-amber-500 shadow-md ring-2 ring-amber-500/20 text-slate-900"
-                      : "bg-amber-950/50 border-amber-500 shadow-lg ring-2 ring-amber-500/40 text-white"
+                      ? "bg-amber-50/80 border-amber-500 shadow-lg ring-4 ring-amber-500/25 text-slate-900"
+                      : "bg-amber-950/40 border-amber-500 shadow-xl ring-4 ring-amber-500/35 text-white"
                     : isLight
-                    ? "bg-slate-50/60 border-slate-200 hover:border-amber-300"
-                    : "bg-neutral-950/60 border-neutral-800 hover:border-amber-500/40"
+                    ? "bg-slate-50 border-slate-200 hover:border-amber-400 hover:bg-amber-50/30"
+                    : "bg-neutral-950 border-neutral-800 hover:border-amber-500/50 hover:bg-neutral-900"
                 }`}
               >
-                <div className="p-3 rounded-xl bg-amber-500 text-slate-950 shadow-md group-hover:scale-105 transition-transform flex-shrink-0">
-                  <Boxes className="w-6 h-6" />
+                {/* Visual Pill Indicator */}
+                <div className="p-3.5 rounded-2xl bg-amber-500 text-slate-950 shadow-md flex-shrink-0 group-hover:scale-105 transition-transform flex items-center justify-center">
+                  <UserCheck className="w-7 h-7" />
                 </div>
-                <div>
-                  <div className={`font-black text-sm ${isLight ? "text-slate-900" : "text-white"}`}>{t("materialShortage")}</div>
-                  <div className="text-xs text-amber-700 dark:text-amber-400 font-bold">Material / Part Shortage</div>
-                  <div className={`text-[11px] mt-1 ${isLight ? "text-slate-600" : "text-neutral-400"}`}>
-                    {language === "en" ? "Out of stock parts, wrong kit supply, empty bin." : "Stok part habis, salah part suplai, bin kosong, call logistics."}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="bg-amber-500 text-slate-950 font-mono font-black text-xs px-2.5 py-0.5 rounded-md uppercase tracking-wider">
+                      {language === "en" ? "YELLOW BUTTON" : "TOMBOL KUNING"}
+                    </span>
+                    <span className="text-xs text-amber-700 dark:text-amber-300 font-bold">
+                      {language === "en" ? "LEADER & QUALITY" : "SUPERVISI & KUALITAS"}
+                    </span>
+                  </div>
+                  <div className={`text-base font-black tracking-tight ${isLight ? "text-slate-900" : "text-white"}`}>
+                    {language === "en" ? "CALLING LEADER" : "CALLING LEADER"}
+                  </div>
+                  <div className={`text-xs mt-1 leading-relaxed ${isLight ? "text-slate-600" : "text-neutral-300"}`}>
+                    {language === "en"
+                      ? "Abnormal Quality (NG parts, defect), Process delays, Tooling issues, and Productivity bottlenecks."
+                      : "Abnormal Kualitas (Part Cacat/NG), Kendala Proses Kerja, Tooling, dan Penurunan Produktivitas."}
+                  </div>
+                </div>
+                {/* Active Radio Pill */}
+                <div className="flex-shrink-0 pt-1">
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                    selectedCategory === "leader_call" || selectedCategory === "quality_defect" || selectedCategory === "supervisor_call"
+                      ? "border-amber-500 bg-amber-500 text-slate-950"
+                      : isLight ? "border-slate-300 bg-white" : "border-neutral-700 bg-neutral-900"
+                  }`}>
+                    {(selectedCategory === "leader_call" || selectedCategory === "quality_defect" || selectedCategory === "supervisor_call") && (
+                      <span className="w-2 h-2 rounded-full bg-slate-950" />
+                    )}
                   </div>
                 </div>
               </button>
 
-              {/* Quality Defect */}
+              {/* BUTTON 3: HIJAU = CALLING MATERIAL SUPPORT */}
               <button
                 type="button"
-                id="btn-cat-quality"
-                onClick={() => handleQuickCategorySelect("quality_defect")}
-                className={`p-4 rounded-2xl text-left border-2 transition-all flex items-start gap-3.5 relative overflow-hidden group cursor-pointer ${
-                  selectedCategory === "quality_defect"
+                id="btn-cat-calling-material"
+                onClick={() => handleSelectCategory("material_support")}
+                className={`p-5 rounded-2xl text-left border-2 transition-all flex items-start gap-4 relative overflow-hidden group cursor-pointer ${
+                  selectedCategory === "material_support" || selectedCategory === "material_shortage"
                     ? isLight
-                      ? "bg-orange-50 border-orange-500 shadow-md ring-2 ring-orange-500/20 text-slate-900"
-                      : "bg-orange-950/50 border-orange-500 shadow-lg ring-2 ring-orange-500/40 text-white"
+                      ? "bg-emerald-50/80 border-emerald-500 shadow-lg ring-4 ring-emerald-500/25 text-slate-900"
+                      : "bg-emerald-950/40 border-emerald-500 shadow-xl ring-4 ring-emerald-500/35 text-white"
                     : isLight
-                    ? "bg-slate-50/60 border-slate-200 hover:border-orange-300"
-                    : "bg-neutral-950/60 border-neutral-800 hover:border-orange-500/40"
+                    ? "bg-slate-50 border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/30"
+                    : "bg-neutral-950 border-neutral-800 hover:border-emerald-500/50 hover:bg-neutral-900"
                 }`}
               >
-                <div className="p-3 rounded-xl bg-orange-600 text-white shadow-md group-hover:scale-105 transition-transform flex-shrink-0">
-                  <ShieldAlert className="w-6 h-6" />
+                {/* Visual Pill Indicator */}
+                <div className="p-3.5 rounded-2xl bg-emerald-600 text-white shadow-md flex-shrink-0 group-hover:scale-105 transition-transform flex items-center justify-center">
+                  <Boxes className="w-7 h-7" />
                 </div>
-                <div>
-                  <div className={`font-black text-sm ${isLight ? "text-slate-900" : "text-white"}`}>{t("qualityDefect")}</div>
-                  <div className="text-xs text-orange-600 font-bold">Quality Issue / Defect Part</div>
-                  <div className={`text-[11px] mt-1 ${isLight ? "text-slate-600" : "text-neutral-400"}`}>
-                    {language === "en" ? "Dimension tolerance NG, scratch/dent, weld porosity." : "Cacat dimensi, baret cat, pengelasan porositas, NG berturut."}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="bg-emerald-600 text-white font-mono font-black text-xs px-2.5 py-0.5 rounded-md uppercase tracking-wider">
+                      {language === "en" ? "GREEN BUTTON" : "TOMBOL HIJAU"}
+                    </span>
+                    <span className="text-xs text-emerald-600 font-bold">
+                      {language === "en" ? "MATERIAL LOGISTICS" : "LOGISTIK & MATERIAL"}
+                    </span>
+                  </div>
+                  <div className={`text-base font-black tracking-tight ${isLight ? "text-slate-900" : "text-white"}`}>
+                    {language === "en" ? "CALLING MATERIAL SUPPORT" : "CALLING MATERIAL SUPPORT"}
+                  </div>
+                  <div className={`text-xs mt-1 leading-relaxed ${isLight ? "text-slate-600" : "text-neutral-300"}`}>
+                    {language === "en"
+                      ? "Pengadaan Material replenishment, empty bin supply, or Abnormality Material (wrong spec, contaminated)."
+                      : "Pengadaan Material / Pasokan Habis / Abnormality Material (Salah Tipe, Rusak dari Vendor)."}
                   </div>
                 </div>
-              </button>
-
-              {/* Maintenance & Tooling */}
-              <button
-                type="button"
-                id="btn-cat-tooling"
-                onClick={() => handleQuickCategorySelect("maintenance_tooling")}
-                className={`p-4 rounded-2xl text-left border-2 transition-all flex items-start gap-3.5 relative overflow-hidden group cursor-pointer ${
-                  selectedCategory === "maintenance_tooling"
-                    ? isLight
-                      ? "bg-blue-50 border-blue-500 shadow-md ring-2 ring-blue-500/20 text-slate-900"
-                      : "bg-blue-950/50 border-blue-500 shadow-lg ring-2 ring-blue-500/40 text-white"
-                    : isLight
-                    ? "bg-slate-50/60 border-slate-200 hover:border-blue-300"
-                    : "bg-neutral-950/60 border-neutral-800 hover:border-blue-500/40"
-                }`}
-              >
-                <div className="p-3 rounded-xl bg-blue-600 text-white shadow-md group-hover:scale-105 transition-transform flex-shrink-0">
-                  <Wrench className="w-6 h-6" />
-                </div>
-                <div>
-                  <div className={`font-black text-sm ${isLight ? "text-slate-900" : "text-white"}`}>{t("toolingMaintenance")}</div>
-                  <div className="text-xs text-blue-600 font-bold">Dies / Tool Wear / Calibration</div>
-                  <div className={`text-[11px] mt-1 ${isLight ? "text-slate-600" : "text-neutral-400"}`}>
-                    {language === "en" ? "Replace cutting insert, sharpening blade, jig wear." : "Ganti mata potong, asah pisau cutter, ganti jig cetakan."}
-                  </div>
-                </div>
-              </button>
-
-              {/* Leader / Supervisor */}
-              <button
-                type="button"
-                id="btn-cat-supervisor"
-                onClick={() => handleQuickCategorySelect("supervisor_call")}
-                className={`p-4 rounded-2xl text-left border-2 transition-all flex items-start gap-3.5 relative overflow-hidden group cursor-pointer ${
-                  selectedCategory === "supervisor_call"
-                    ? isLight
-                      ? "bg-purple-50 border-purple-500 shadow-md ring-2 ring-purple-500/20 text-slate-900"
-                      : "bg-purple-950/50 border-purple-500 shadow-lg ring-2 ring-purple-500/40 text-white"
-                    : isLight
-                    ? "bg-slate-50/60 border-slate-200 hover:border-purple-300"
-                    : "bg-neutral-950/60 border-neutral-800 hover:border-purple-500/40"
-                }`}
-              >
-                <div className="p-3 rounded-xl bg-purple-600 text-white shadow-md group-hover:scale-105 transition-transform flex-shrink-0">
-                  <UserCheck className="w-6 h-6" />
-                </div>
-                <div>
-                  <div className={`font-black text-sm ${isLight ? "text-slate-900" : "text-white"}`}>{t("supervisorSupport")}</div>
-                  <div className="text-xs text-purple-600 font-bold">Foreman / Supervisor Support</div>
-                  <div className={`text-[11px] mt-1 ${isLight ? "text-slate-600" : "text-neutral-400"}`}>
-                    {language === "en" ? "SOP validation, operator substitution, rework approval." : "Validasi SOP, pergantian operator, persetujuan rework."}
-                  </div>
-                </div>
-              </button>
-
-              {/* Safety Alert (K3) */}
-              <button
-                type="button"
-                id="btn-cat-safety"
-                onClick={() => handleQuickCategorySelect("safety_alert")}
-                className={`p-4 rounded-2xl text-left border-2 transition-all flex items-start gap-3.5 relative overflow-hidden group cursor-pointer ${
-                  selectedCategory === "safety_alert"
-                    ? isLight
-                      ? "bg-emerald-50 border-emerald-500 shadow-md ring-2 ring-emerald-500/20 text-slate-900"
-                      : "bg-emerald-950/50 border-emerald-500 shadow-lg ring-2 ring-emerald-500/40 text-white"
-                    : isLight
-                    ? "bg-slate-50/60 border-slate-200 hover:border-emerald-300"
-                    : "bg-neutral-950/60 border-neutral-800 hover:border-emerald-500/40"
-                }`}
-              >
-                <div className="p-3 rounded-xl bg-emerald-600 text-white shadow-md group-hover:scale-105 transition-transform flex-shrink-0">
-                  <AlertTriangle className="w-6 h-6" />
-                </div>
-                <div>
-                  <div className={`font-black text-sm ${isLight ? "text-slate-900" : "text-white"}`}>{t("safetyHazard")}</div>
-                  <div className="text-xs text-emerald-600 font-bold">Safety & EHS Hazard Alert</div>
-                  <div className={`text-[11px] mt-1 ${isLight ? "text-slate-600" : "text-neutral-400"}`}>
-                    {language === "en" ? "Oil/chemical spill, smoke odor, broken machine guard." : "Tumpahan oli/kimia, bau asap, pelindung mesin lepas."}
+                {/* Active Radio Pill */}
+                <div className="flex-shrink-0 pt-1">
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                    selectedCategory === "material_support" || selectedCategory === "material_shortage"
+                      ? "border-emerald-600 bg-emerald-600 text-white"
+                      : isLight ? "border-slate-300 bg-white" : "border-neutral-700 bg-neutral-900"
+                  }`}>
+                    {(selectedCategory === "material_support" || selectedCategory === "material_shortage") && (
+                      <span className="w-2 h-2 rounded-full bg-white" />
+                    )}
                   </div>
                 </div>
               </button>
@@ -502,13 +524,9 @@ export const OperatorTerminal: React.FC<OperatorTerminalProps> = ({
               <h3 className={`text-xs font-bold uppercase tracking-wider ${isLight ? "text-slate-700" : "text-neutral-300"}`}>
                 3. {language === "en" ? "Call Details & ID" : "Detail Panggilan & Identitas"}
               </h3>
-              {currentUser && (
-                <span className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold border ${
-                  isLight ? "text-amber-800 bg-amber-50 border-amber-200" : "text-amber-400 bg-amber-500/10 border-amber-500/30"
-                }`}>
-                  {currentUser.role.toUpperCase()}
-                </span>
-              )}
+              <span className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold border ${activeCategoryItem.badgeClass}`}>
+                {language === "en" ? activeCategoryItem.colorNameEn : activeCategoryItem.colorName}
+              </span>
             </div>
 
             {/* Line Stop Status Toggle */}
@@ -569,90 +587,25 @@ export const OperatorTerminal: React.FC<OperatorTerminalProps> = ({
               </div>
             </div>
 
-            {/* Machine & Part No */}
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className={`block text-[11px] font-semibold mb-1 ${isLight ? "text-slate-600" : "text-neutral-400"}`}>
-                  {t("machineToolId")}
-                </label>
-                <input
-                  type="text"
-                  value={machineId}
-                  onChange={(e) => setMachineId(e.target.value)}
-                  placeholder="e.g. CNC-01"
-                  className={`w-full rounded-xl px-3 py-2 text-xs border focus:outline-none focus:ring-1 focus:ring-amber-500 ${
-                    isLight
-                      ? "bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400"
-                      : "bg-neutral-950 border-neutral-800 text-white placeholder-neutral-600"
-                  }`}
-                />
-              </div>
-              <div>
-                <label className={`block text-[11px] font-semibold mb-1 ${isLight ? "text-slate-600" : "text-neutral-400"}`}>
-                  {t("partNumber")}
-                </label>
-                <input
-                  type="text"
-                  value={partNumber}
-                  onChange={(e) => setPartNumber(e.target.value)}
-                  placeholder="e.g. PRT-900"
-                  className={`w-full rounded-xl px-3 py-2 text-xs border focus:outline-none focus:ring-1 focus:ring-amber-500 ${
-                    isLight
-                      ? "bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400"
-                      : "bg-neutral-950 border-neutral-800 text-white placeholder-neutral-600"
-                  }`}
-                />
-              </div>
-            </div>
-
-            {/* Operator Name & ID */}
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className={`block text-[11px] font-semibold mb-1 ${isLight ? "text-slate-600" : "text-neutral-400"}`}>
-                  {t("operatorName")}
-                </label>
-                <input
-                  type="text"
-                  value={operatorName}
-                  onChange={(e) => setOperatorName(e.target.value)}
-                  className={`w-full rounded-xl px-3 py-2 text-xs border focus:outline-none focus:ring-1 focus:ring-amber-500 ${
-                    isLight
-                      ? "bg-slate-50 border-slate-300 text-slate-900"
-                      : "bg-neutral-950 border-neutral-800 text-white"
-                  }`}
-                />
-              </div>
-              <div>
-                <label className={`block text-[11px] font-semibold mb-1 ${isLight ? "text-slate-600" : "text-neutral-400"}`}>
-                  {t("badgeId")}
-                </label>
-                <input
-                  type="text"
-                  value={operatorId}
-                  onChange={(e) => setOperatorId(e.target.value)}
-                  className={`w-full rounded-xl px-3 py-2 text-xs font-mono border focus:outline-none focus:ring-1 focus:ring-amber-500 ${
-                    isLight
-                      ? "bg-slate-50 border-slate-300 text-slate-900"
-                      : "bg-neutral-950 border-neutral-800 text-white"
-                  }`}
-                />
-              </div>
-            </div>
-
-            {/* Optional Description */}
+            {/* Prominent Problem Description (Uraian Masalah) only, for Operator Efficiency */}
             <div>
-              <label className={`block text-[11px] font-semibold mb-1 ${isLight ? "text-slate-600" : "text-neutral-400"}`}>
-                {t("symptomNotes")}
+              <label className={`block text-xs font-bold mb-1.5 uppercase tracking-wide ${isLight ? "text-slate-700" : "text-neutral-300"}`}>
+                {language === "id" ? "Uraian Masalah" : "Problem Description"} <span className="text-red-500">*</span>
               </label>
               <textarea
-                rows={2}
+                rows={4}
+                required
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder={language === "en" ? "e.g. Bearing noise, hydraulic leak, error code E-102..." : "Contoh: Suara berderit pada bearing, silinder macet, error code E-102..."}
-                className={`w-full rounded-xl p-3 text-xs border focus:outline-none focus:ring-1 focus:ring-amber-500 resize-none ${
+                placeholder={
+                  language === "id"
+                    ? "Tuliskan uraian masalah secara singkat (contoh: Sensor pneumatic macet, baut longgar, part reject...)"
+                    : "Describe the issue briefly (e.g., Pneumatic sensor jammed, loose bolt, reject part...)"
+                }
+                className={`w-full rounded-2xl p-3.5 text-xs border focus:outline-none focus:ring-1 focus:ring-amber-500 resize-none font-medium leading-relaxed ${
                   isLight
-                    ? "bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400"
-                    : "bg-neutral-950 border-neutral-800 text-white placeholder-neutral-600"
+                    ? "bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400 focus:bg-white"
+                    : "bg-neutral-950 border-neutral-800 text-white placeholder-neutral-600 focus:bg-neutral-900"
                 }`}
               />
             </div>
@@ -661,14 +614,20 @@ export const OperatorTerminal: React.FC<OperatorTerminalProps> = ({
             <button
               type="submit"
               id="btn-submit-andon-call"
-              className="w-full py-4 rounded-2xl bg-gradient-to-r from-red-600 via-amber-600 to-red-600 hover:from-red-500 hover:to-amber-500 text-white font-black text-base tracking-wide flex items-center justify-center gap-2 shadow-xl shadow-red-500/20 transform active:scale-98 transition-all cursor-pointer"
+              className={`w-full py-4 rounded-2xl text-white font-black text-base tracking-wide flex items-center justify-center gap-2 shadow-xl transform active:scale-98 transition-all cursor-pointer ${
+                selectedCategory === "abnormal_machine" || selectedCategory === "machine_breakdown"
+                  ? "bg-red-600 hover:bg-red-500 shadow-red-500/25"
+                  : selectedCategory === "leader_call" || selectedCategory === "quality_defect" || selectedCategory === "supervisor_call"
+                  ? "bg-amber-500 text-slate-950 hover:bg-amber-400 shadow-amber-500/25 font-black"
+                  : "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/25"
+              }`}
             >
               <PhoneCall className="w-5 h-5 animate-bounce" />
               <span>{t("sendAndonCallBtn")}</span>
             </button>
             <p className={`text-[10px] text-center ${isLight ? "text-slate-500" : "text-neutral-500"}`}>
               {language === "en" 
-                ? "Tower lights & siren will trigger across shopfloor immediately." 
+                ? "Tower lights & siren will broadcast across shopfloor instantly." 
                 : "Lampu tower & sirene di plant akan aktif seketika setelah tombol ditekan."}
             </p>
           </div>

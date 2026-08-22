@@ -32,14 +32,14 @@ export const DEFAULT_USERS: UserProfile[] = [
     email: "budi.spv@factory.local"
   },
   {
-    id: "USR-ADM-01",
-    name: "Administrator Pabrik",
-    badgeId: "ADM-9999",
+    id: "USR-ressa20",
+    name: "Ressa Hidayat (Administrator)",
+    badgeId: "ressa20",
     role: "admin",
     department: "Plant Management & IT",
-    pin: "9999",
+    pin: "020420",
     lineAccess: ["*"],
-    email: "admin@factory.local"
+    email: "hidayatressa@gmail.com"
   }
 ];
 
