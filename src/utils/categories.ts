@@ -47,7 +47,7 @@ export const CATEGORIES_DATA: Record<CallCategory, CategoryMetadata> = {
     badgeBg: "bg-emerald-600",
     badgeText: "text-white",
     soundPitch: 520,
-    towerColor: "green" as any
+    towerColor: "green"
   },
 
   // Legacy mappings for backward compatibility
@@ -75,7 +75,7 @@ export const CATEGORIES_DATA: Record<CallCategory, CategoryMetadata> = {
     badgeBg: "bg-emerald-600",
     badgeText: "text-white",
     soundPitch: 520,
-    towerColor: "green" as any
+    towerColor: "green"
   },
   quality_defect: {
     id: "quality_defect",

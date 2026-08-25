@@ -9,6 +9,7 @@ import { MasterDataManager } from "./components/MasterDataManager";
 import { ActivityLogsViewer } from "./components/ActivityLogsViewer";
 import { AdminDashboard } from "./components/AdminDashboard";
 import { LoginScreen } from "./components/LoginScreen";
+import { LoginModal } from "./components/LoginModal";
 import { ConfigModal } from "./components/ConfigModal";
 import { CallDetailModal } from "./components/CallDetailModal";
 import { 
@@ -427,6 +428,18 @@ export default function App() {
         language={language}
         setLanguage={setLanguage}
         currentUser={currentUser}
+      />
+
+      {/* Quick Switch User Modal */}
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+        onLoginSuccess={(user) => {
+          handleLoginSuccess(user);
+          setIsLoginModalOpen(false);
+        }}
+        theme={theme}
+        language={language}
       />
     </div>
   );

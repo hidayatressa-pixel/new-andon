@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { 
   Activity, 
-  Users, 
   ShieldAlert, 
   Database, 
   Server, 
@@ -361,7 +360,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 Project ID
               </span>
               <code className={`font-mono font-black text-xs ${isLight ? "text-slate-800" : "text-amber-300"}`}>
-                responsible-mechanism-2mbw7
+                {import.meta.env.VITE_FIREBASE_PROJECT_ID || "cloud-andon-production"}
               </code>
             </div>
 
@@ -370,7 +369,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 Firestore Database ID (Kustom)
               </span>
               <code className="font-mono font-black text-xs text-cyan-500">
-                ai-studio-andonsmartfactor-0178f3d5-0f52-4941-b167-9272f5b85fc9
+                {import.meta.env.VITE_FIREBASE_DATABASE_ID || "(default)"}
               </code>
             </div>
           </div>

@@ -20,12 +20,11 @@ import {
   Sun, 
   Moon 
 } from "lucide-react";
-import { ActiveTab, AndonCall, SoundConfig, UserProfile, AppTheme, AppLanguage } from "../types";
+import { ActiveTab, AndonCall, SoundConfig, UserProfile, AppTheme, AppLanguage, BrandConfig } from "../types";
 import { getTranslation, TranslationKey } from "../utils/i18n";
 import { canResolveAndon, canManageMasterData } from "../utils/permissions";
 import { AppLogo } from "./Logo";
 import { loadSavedBranding } from "../utils/branding";
-import { BrandConfig } from "../types";
 
 interface HeaderProps {
   activeTab: ActiveTab;

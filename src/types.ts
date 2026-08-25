@@ -148,7 +148,7 @@ export interface CategoryMetadata {
   badgeBg: string;
   badgeText: string;
   soundPitch: number;
-  towerColor: 'red' | 'yellow' | 'blue' | 'purple' | 'orange' | 'white';
+  towerColor: 'red' | 'yellow' | 'green' | 'blue' | 'purple' | 'orange' | 'white';
 }
 
 export interface BrandConfig {

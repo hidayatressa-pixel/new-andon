@@ -6,7 +6,7 @@ import {
   Clock, 
   Flame, 
   Search, 
-  Filter, 
+  Filter,
   CheckCircle
 } from "lucide-react";
 import { AndonCall, AndonLine, CallCategory, AppTheme, AppLanguage, ActivityLog } from "../types";
