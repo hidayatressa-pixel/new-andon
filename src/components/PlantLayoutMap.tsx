@@ -3,12 +3,10 @@ import {
   Map, 
   Flame, 
   AlertTriangle, 
-  CheckCircle2, 
-  ArrowRight,
-  Layers,
-  Box,
-  Truck,
-  Activity
+  ArrowRight, 
+  Box, 
+  Truck, 
+  Activity 
 } from "lucide-react";
 import { AndonCall, AndonLine, AppTheme, AppLanguage } from "../types";
 import { CATEGORIES_DATA } from "../utils/categories";

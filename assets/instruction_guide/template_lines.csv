@@ -1,0 +1,7 @@
+id,name,shortCode,department,leaderName,targetDaily,workstations
+LINE-1,Line 1: Machining & CNC Milling,L1-MCN,Machining,Bambang Sutrisno,450,OP-10 Rough Cut; OP-20 CNC Mill; OP-30 CNC Lathe; OP-40 Deburring; OP-50 CMM Check
+LINE-2,Line 2: Stamping & Heavy Press,L2-STP,Stamping,Hendra Wijaya,800,OP-10 Decoiler Feed; OP-20 500T Press; OP-30 Piercing Station; OP-40 Flange Trimming; OP-50 Visual Check
+LINE-3,Line 3: Robotic Welding & Jig,L3-WLD,Welding,Dedi Kusuma,350,OP-10 Clamping Jig; OP-20 Robot Arm 1 Spot; OP-30 Robot Arm 2 MIG; OP-40 Manual Touch; OP-50 NDT Check
+LINE-4,Line 4: Electrostatic Paint & Oven,L4-PNT,Painting,Surya Tanoto,500,OP-10 Chemical Degreasing; OP-20 Primer Dip; OP-30 Top Coat Spray; OP-40 Curing Oven 180C; OP-50 Gloss QC
+LINE-5,Line 5: Main Final Assembly A,L5-ASM,Assembly,Ahmad Fauzi,600,OP-10 Sub-assembly Base; OP-20 Wire Harness Route; OP-30 Torque Tightening; OP-40 PCB & Sensor Fit; OP-50 Final Casing
+LINE-6,Line 6: Testing QC & Packaging,L6-PKG,Packaging,Rian Pratama,600,OP-10 Electrical Test; OP-20 Functional Benchmark; OP-30 Barcode & Serial Label; OP-40 Box Packing; OP-50 Palletizing Robot

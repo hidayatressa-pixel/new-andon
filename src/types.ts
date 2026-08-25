@@ -134,7 +134,8 @@ export type ActiveTab =
   | 'plant_map' 
   | 'master_data' 
   | 'activity_logs' 
-  | 'analytics_reports';
+  | 'analytics_reports'
+  | 'admin_dashboard';
 
 export interface CategoryMetadata {
   id: CallCategory;
@@ -148,4 +149,13 @@ export interface CategoryMetadata {
   badgeText: string;
   soundPitch: number;
   towerColor: 'red' | 'yellow' | 'blue' | 'purple' | 'orange' | 'white';
+}
+
+export interface BrandConfig {
+  mode: 'demo' | 'custom_image' | 'custom_text';
+  customLogoUrl?: string;
+  customLogoText?: string;
+  customAppName?: string;
+  customAppSubtitle?: string;
+  logoHeight?: number;
 }

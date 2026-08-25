@@ -7,6 +7,7 @@ import { PlantLayoutMap } from "./components/PlantLayoutMap";
 import { AnalyticsReports } from "./components/AnalyticsReports";
 import { MasterDataManager } from "./components/MasterDataManager";
 import { ActivityLogsViewer } from "./components/ActivityLogsViewer";
+import { AdminDashboard } from "./components/AdminDashboard";
 import { LoginScreen } from "./components/LoginScreen";
 import { ConfigModal } from "./components/ConfigModal";
 import { CallDetailModal } from "./components/CallDetailModal";
@@ -31,7 +32,7 @@ import {
   saveLanguageToStorage,
   generateTicketNo 
 } from "./utils/storage";
-import { loadCurrentSession, clearSession, DEFAULT_USERS } from "./utils/auth";
+import { loadCurrentSession, clearSession } from "./utils/auth";
 import { 
   subscribeAndonCalls, 
   subscribeMasterLines, 
@@ -228,7 +229,7 @@ export default function App() {
       logActivity(
         "login",
         `User Logout: ${currentUser.name}`,
-        `Pengguna keluar sesi.`,
+        `User session logged out.`,
         { name: currentUser.name, id: currentUser.badgeId, role: currentUser.role }
       );
     }
@@ -267,11 +268,11 @@ export default function App() {
       category: "machine_breakdown",
       severity: "critical_line_stop",
       isLineStopped: true,
-      operatorName: currentUser ? currentUser.name : "Agus Operator (Demo)",
+      operatorName: currentUser ? currentUser.name : "Alex Operator (Demo)",
       operatorId: currentUser ? currentUser.badgeId : "OP-9901",
       machineId: "ROBOT-SIM-01",
       partNumber: "DEMO-PART-2026",
-      description: language === "en" ? "Optical sensor detects clamping position deviation. Conveyor auto line stop." : "Sensor optik membaca kegagalan posisi klem. Konveyor otomatis line stop.",
+      description: "Optical sensor detects clamping position deviation. Conveyor auto line stop.",
     });
   };
 
@@ -374,6 +375,16 @@ export default function App() {
           />
         )}
 
+        {activeTab === "admin_dashboard" && (
+          <AdminDashboard
+            lines={lines}
+            calls={calls}
+            currentUser={currentUser}
+            theme={theme}
+            language={language}
+          />
+        )}
+
         {activeTab === "activity_logs" && (
           <ActivityLogsViewer
             logs={activityLogs}
@@ -387,6 +398,7 @@ export default function App() {
           <AnalyticsReports 
             calls={calls} 
             lines={lines} 
+            activityLogs={activityLogs}
             theme={theme}
             language={language}
           />

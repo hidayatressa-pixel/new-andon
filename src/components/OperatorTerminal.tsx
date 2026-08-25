@@ -5,11 +5,7 @@ import {
   UserCheck, 
   CheckCircle, 
   PhoneCall, 
-  Clock, 
-  User, 
-  Layers,
-  AlertOctagon,
-  Radio
+  Clock
 } from "lucide-react";
 import { AndonCall, AndonLine, CallCategory, CallSeverity, UserProfile, AppTheme, AppLanguage } from "../types";
 import { CATEGORIES_DATA, PRIMARY_ANDON_BUTTONS, normalizeCategoryToPrimary } from "../utils/categories";
@@ -291,8 +287,8 @@ export const OperatorTerminal: React.FC<OperatorTerminalProps> = ({
             <div className="font-bold text-sm">{language === "en" ? "Andon Call Broadcasted Successfully!" : "Panggilan Andon Berhasil Dibuat!"}</div>
             <div className="text-xs">
               {language === "en" 
-                ? "Alarm sounded and ticket saved to Cloud Firestore & logged in Activity Logs." 
-                : "Notifikasi alarm berbunyi dan tiket tersimpan di Database Cloud Firestore & tercatat di Activity Log."}
+                ? "Alarm sounded and Work Order (WO) saved to Cloud Firestore & logged in Activity Logs." 
+                : "Notifikasi alarm berbunyi dan Work Order (WO) tersimpan di Database Cloud Firestore & tercatat di Activity Log."}
             </div>
           </div>
         </div>
@@ -494,7 +490,7 @@ export const OperatorTerminal: React.FC<OperatorTerminalProps> = ({
                   </div>
                   <div className={`text-xs mt-1 leading-relaxed ${isLight ? "text-slate-600" : "text-neutral-300"}`}>
                     {language === "en"
-                      ? "Pengadaan Material replenishment, empty bin supply, or Abnormality Material (wrong spec, contaminated)."
+                      ? "Material supply replenishment, empty bin supply, or raw material defect."
                       : "Pengadaan Material / Pasokan Habis / Abnormality Material (Salah Tipe, Rusak dari Vendor)."}
                   </div>
                 </div>

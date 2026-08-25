@@ -1,9 +1,109 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow read/write for manufacturing shopfloor application
-    match /{document=**} {
-      allow read, write: if true;
+    
+    // Check if the user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper to check user's role in the master_operators collection
+    function getUserRole() {
+      return get(/databases/$(database)/documents/master_operators/$(request.auth.uid)).data.role;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (getUserRole() == 'admin');
+    }
+
+    function isSupervisor() {
+      return isAuthenticated() && (getUserRole() == 'supervisor' || getUserRole() == 'admin');
+    }
+
+    function isTechnician() {
+      return isAuthenticated() && (getUserRole() == 'technician' || getUserRole() == 'supervisor' || getUserRole() == 'admin');
+    }
+
+    function isOperator() {
+      return isAuthenticated() && (getUserRole() == 'operator' || getUserRole() == 'technician' || getUserRole() == 'supervisor' || getUserRole() == 'admin');
+    }
+
+    // 1. ANDON CALLS
+    match /andon_calls/{callId} {
+      // Secured: Authenticated plant staff only
+      allow read: if isAuthenticated();
+      
+      // Operators and above can raise a call
+      allow create: if isAuthenticated() && isOperator();
+      
+      // Operators and above can update status; restrict modification of key historical fields
+      allow update: if isAuthenticated() && isOperator() && (
+        isSupervisor() || (
+          request.resource.data.operatorId == resource.data.operatorId &&
+          request.resource.data.timestamp == resource.data.timestamp
+        )
+      );
+      
+      // Only supervisors and admins can delete or cancel calls
+      allow delete: if isAuthenticated() && isSupervisor();
+    }
+
+    // 2. MASTER PRODUCTION LINES
+    match /master_lines/{lineId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isAdmin();
+    }
+
+    // 3. MASTER MACHINES
+    match /master_machines/{machineId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isAdmin();
+    }
+
+    // 4. MASTER OPERATORS (PROFILES)
+    match /master_operators/{operatorId} {
+      // Secured: Authenticated users can read profiles for routing and display matching
+      allow read: if isAuthenticated();
+      
+      // Creating a profile: Standard users self-provision as standard operators only; admins can create any role
+      allow create: if isAuthenticated() && (
+        isAdmin() || (
+          request.auth.uid == operatorId && 
+          request.resource.data.role == 'operator'
+        )
+      );
+
+      // Updating a profile: Safe self-edit of fields (like display name) is permitted; 
+      // Critical security-related attributes (role, badgeId, email, lineAccess, active) are completely immutable for non-admins
+      allow update: if isAuthenticated() && (
+        isAdmin() || (
+          request.auth.uid == operatorId &&
+          request.resource.data.role == resource.data.role &&
+          request.resource.data.badgeId == resource.data.badgeId &&
+          request.resource.data.email == resource.data.email &&
+          (!('lineAccess' in resource.data) || request.resource.data.lineAccess == resource.data.lineAccess) &&
+          (!('department' in resource.data) || request.resource.data.department == resource.data.department)
+        )
+      );
+      
+      // Only Admins can delete user profiles
+      allow delete: if isAuthenticated() && isAdmin();
+    }
+
+    // 5. SYSTEM ACTIVITY LOGS (AUDIT TRAIL)
+    match /activity_logs/{logId} {
+      // Only supervisors and admins can view audit history logs
+      allow read: if isAuthenticated() && isSupervisor();
+      // Any authenticated action is allowed to write a log trace
+      allow create: if isAuthenticated();
+      // Historical logs cannot be updated or deleted by anyone except admins
+      allow update, delete: if isAuthenticated() && isAdmin();
+    }
+
+    // 6. SYSTEM CONFIGURATION
+    match /system_config/{configId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isAdmin();
     }
   }
 }

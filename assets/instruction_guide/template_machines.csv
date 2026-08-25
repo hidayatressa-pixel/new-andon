@@ -1,0 +1,8 @@
+id,code,name,lineId,lineName,workstation
+MCH-001,CNC-MILL-01,5-Axis CNC Milling Center,LINE-1,Line 1: Machining & CNC Milling,OP-20 CNC Mill
+MCH-002,CNC-LATHE-01,High Precision CNC Lathe,LINE-1,Line 1: Machining & CNC Milling,OP-30 CNC Lathe
+MCH-003,PRESS-500T-A,Komatsu 500T Stamping Press,LINE-2,Line 2: Stamping & Heavy Press,OP-20 500T Press
+MCH-004,ROBOT-WELD-A1,Fanuc 6-Axis Spot Welding Arm,LINE-3,Line 3: Robotic Welding & Jig,OP-20 Robot Arm 1 Spot
+MCH-005,OVEN-CURING-01,Continuous Thermal Curing Oven,LINE-4,Line 4: Electrostatic Paint & Oven,OP-40 Curing Oven 180C
+MCH-006,TORQUE-TX4-01,Atlas Copco Digital Nutrunner,LINE-5,Line 5: Main Final Assembly A,OP-30 Torque Tightening
+MCH-007,LEAK-TEST-01,Helium Vacuum Leak Tester,LINE-6,Line 6: Testing QC & Packaging,OP-20 Functional Benchmark

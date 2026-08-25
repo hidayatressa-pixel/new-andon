@@ -16,11 +16,13 @@ import {
   HelpCircle,
   Sparkles,
   ShieldAlert,
-  RotateCcw
+  RotateCcw,
+  Building2
 } from "lucide-react";
 import Papa from "papaparse";
 import * as XLSX from "xlsx";
-import { AndonLine, MasterMachine, MasterWorkstation, UserProfile, UserRole, AppTheme, AppLanguage } from "../types";
+import { AndonLine, MasterMachine, UserProfile, UserRole, AppTheme, AppLanguage } from "../types";
+import { BrandingSettingsCard } from "./BrandingSettingsCard";
 import { 
   saveMasterLineInDb, 
   deleteMasterLineInDb, 
@@ -35,10 +37,12 @@ import {
   saveMasterOperatorInDb,
   deleteMasterOperatorInDb,
   clearAllMasterOperatorsInDb,
-  bulkUploadMasterOperatorsInDb
+  bulkUploadMasterOperatorsInDb,
+  IS_DEMO_MODE
 } from "../lib/firestoreService";
 import { INITIAL_LINES } from "../utils/initialData";
 import { getTranslation, TranslationKey } from "../utils/i18n";
+import { canManageMasterData } from "../utils/permissions";
 
 interface MasterDataManagerProps {
   lines: AndonLine[];
@@ -54,11 +58,21 @@ export const MasterDataManager: React.FC<MasterDataManagerProps> = ({
   theme = "light",
   language = "id",
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<"lines" | "machines" | "operators" | "templates" | "clean">("lines");
+  const [activeSubTab, setActiveSubTab] = useState<"lines" | "machines" | "operators" | "templates" | "branding" | "clean">("lines");
   const [operators, setOperators] = useState<UserProfile[]>([]);
   const [machines, setMachines] = useState<MasterMachine[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState<{ success: boolean; message: string } | null>(null);
+  const [uploadStatus, setUploadStatus] = useState<{ 
+    success: boolean; 
+    message: string;
+    summary?: {
+      total: number;
+      created: number;
+      skipped: number;
+      failed: number;
+      errors: string[];
+    };
+  } | null>(null);
   const [isCleaning, setIsCleaning] = useState(false);
   const [cleanMessage, setCleanMessage] = useState<string | null>(null);
 
@@ -92,6 +106,7 @@ export const MasterDataManager: React.FC<MasterDataManagerProps> = ({
     message: string;
     onConfirm: () => void;
     type: "danger" | "warning" | "info";
+    requiresResetWord?: boolean;
   }>({
     isOpen: false,
     title: "",
@@ -100,13 +115,15 @@ export const MasterDataManager: React.FC<MasterDataManagerProps> = ({
     type: "info"
   });
 
+  const [resetWord, setResetWord] = useState("");
+
   const t = (key: TranslationKey, params?: Record<string, string | number>) => 
     getTranslation(language, key, params);
 
   const isLight = theme === "light";
   
-  // Open Master Data management functions automatically to make it easy to deploy real factory configurations without blocks
-  const canManageMaster = true;
+  // Open Master Data management functions for authorized administrators
+  const canManageMaster = canManageMasterData(currentUser);
 
   useEffect(() => {
     const unsubMachines = subscribeMasterMachines((dbMachines) => {
@@ -123,13 +140,13 @@ export const MasterDataManager: React.FC<MasterDataManagerProps> = ({
   }, []);
 
   // Robust case-insensitive and bilingual column matching helper
-  const getValueByPossibleKeys = (row: any, keys: string[]): string | undefined => {
+  const getValueByPossibleKeys = (row: Record<string, unknown>, keys: string[]): string | undefined => {
     for (const k of Object.keys(row)) {
       const normalizedKey = k.toLowerCase().replace(/[\s_\-\/]/g, "");
       for (const targetKey of keys) {
         const normalizedTarget = targetKey.toLowerCase().replace(/[\s_\-\/]/g, "");
         if (normalizedKey === normalizedTarget || k.toLowerCase().includes(targetKey.toLowerCase())) {
-          return String(row[k]);
+          return row[k] !== undefined && row[k] !== null ? String(row[k]) : undefined;
         }
       }
     }
@@ -153,11 +170,11 @@ export const MasterDataManager: React.FC<MasterDataManagerProps> = ({
         skipEmptyLines: "greedy",
         complete: async (results) => {
           try {
-            await processUploadedData(results.data);
-          } catch (err: any) {
+            await processUploadedData(results.data as Record<string, unknown>[]);
+          } catch (err: unknown) {
             setUploadStatus({
               success: false,
-              message: `Gagal memproses CSV: ${err.message || err}`,
+              message: `Gagal memproses CSV: ${err instanceof Error ? err.message : String(err)}`,
             });
           } finally {
             setIsUploading(false);
@@ -179,12 +196,12 @@ export const MasterDataManager: React.FC<MasterDataManagerProps> = ({
           const workbook = XLSX.read(data, { type: "array" });
           const firstSheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[firstSheetName];
-          const jsonData = XLSX.utils.sheet_to_json(worksheet);
+          const jsonData = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet);
           await processUploadedData(jsonData);
-        } catch (err: any) {
+        } catch (err: unknown) {
           setUploadStatus({
             success: false,
-            message: `Gagal memproses Excel: ${err.message || err}`,
+            message: `Gagal memproses Excel: ${err instanceof Error ? err.message : String(err)}`,
           });
         } finally {
           setIsUploading(false);
@@ -201,7 +218,7 @@ export const MasterDataManager: React.FC<MasterDataManagerProps> = ({
     }
   };
 
-  const processUploadedData = async (data: any[]) => {
+  const processUploadedData = async (data: Record<string, unknown>[]) => {
     if (!data || data.length === 0) {
       throw new Error("File kosong atau tidak ada data yang valid.");
     }
@@ -223,52 +240,121 @@ export const MasterDataManager: React.FC<MasterDataManagerProps> = ({
     }
 
     if (targetTab === "operators") {
-      const parsedOperators: UserProfile[] = data.map((row: any, idx: number) => {
-        const badgeId = (
-          getValueByPossibleKeys(row, ["npk", "badgeid", "userid", "user_id", "id", "badge_id", "nomorinduk", "nik"]) || 
-          String(row.badgeId || row.npk || row.userId || `OP-${idx + 1000}`)
-        ).trim();
+      let createdOrUpdatedCount = 0;
+      let skippedCount = 0;
+      let failedCount = 0;
+      const validationErrors: string[] = [];
+      const seenBadgeIds = new Set<string>();
+      const seenEmails = new Set<string>();
+      const validatedOperators: UserProfile[] = [];
 
-        const name = (
-          getValueByPossibleKeys(row, ["name", "namaoperator", "nama", "operator_name", "operator", "nama_lengkap"]) || 
-          String(row.name || row.nama || `Operator ${idx + 1}`)
-        ).trim();
+      data.forEach((row: Record<string, unknown>, idx: number) => {
+        try {
+          const badgeId = (
+            getValueByPossibleKeys(row, ["npk", "badgeid", "userid", "user_id", "id", "badge_id", "nomorinduk", "nik"]) || 
+            String(row.badgeId || row.npk || row.userId || "")
+          ).trim();
 
-        const roleRaw = (
-          getValueByPossibleKeys(row, ["role", "otoritas", "access", "level", "jabatan"]) || 
-          String(row.role || "operator")
-        ).trim().toLowerCase();
+          const name = (
+            getValueByPossibleKeys(row, ["name", "namaoperator", "nama", "operator_name", "operator", "nama_lengkap"]) || 
+            String(row.name || row.nama || "")
+          ).trim();
 
-        // Map role string to UserRole
-        let role: UserRole = "operator";
-        if (roleRaw.includes("admin") || roleRaw.includes("dev")) {
-          role = "admin";
-        } else if (roleRaw.includes("lead") || roleRaw.includes("tech") || roleRaw.includes("maint") || roleRaw.includes("mekanik")) {
-          role = "technician";
-        } else if (roleRaw.includes("super") || roleRaw.includes("spv") || roleRaw.includes("foreman") || roleRaw.includes("karu")) {
-          role = "supervisor";
+          const email = (
+            getValueByPossibleKeys(row, ["email", "surel", "mail"]) || 
+            String(row.email || "")
+          ).trim();
+
+          const roleRaw = (
+            getValueByPossibleKeys(row, ["role", "otoritas", "access", "level", "jabatan"]) || 
+            String(row.role || "operator")
+          ).trim().toLowerCase();
+
+          const department = (
+            getValueByPossibleKeys(row, ["department", "departemen", "dept", "bagian"]) || 
+            String(row.department || "Production")
+          ).trim();
+
+          // 1. Validate required fields
+          if (!badgeId || !name) {
+            failedCount++;
+            validationErrors.push(`Baris ${idx + 1}: NPK/Badge ID dan Nama wajib diisi.`);
+            return;
+          }
+
+          // 2. Validate email format if provided
+          if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            failedCount++;
+            validationErrors.push(`Baris ${idx + 1}: Format email tidak valid (${email}).`);
+            return;
+          }
+
+          // 3. Prevent duplicate badge ID within import sheet
+          if (seenBadgeIds.has(badgeId)) {
+            skippedCount++;
+            validationErrors.push(`Baris ${idx + 1}: Badge ID ganda (${badgeId}) dalam file, baris dilewati.`);
+            return;
+          }
+          seenBadgeIds.add(badgeId);
+
+          // 4. Prevent duplicate email within import sheet
+          if (email) {
+            if (seenEmails.has(email)) {
+              skippedCount++;
+              validationErrors.push(`Baris ${idx + 1}: Email ganda (${email}) dalam file, baris dilewati.`);
+              return;
+            }
+            seenEmails.add(email);
+          }
+
+          // Map and validate roles
+          let role: UserRole = "operator";
+          if (roleRaw.includes("admin") || roleRaw.includes("dev")) {
+            role = "admin";
+          } else if (roleRaw.includes("lead") || roleRaw.includes("tech") || roleRaw.includes("maint") || roleRaw.includes("mekanik")) {
+            role = "technician";
+          } else if (roleRaw.includes("super") || roleRaw.includes("spv") || roleRaw.includes("foreman") || roleRaw.includes("karu")) {
+            role = "supervisor";
+          }
+
+          // Construct user profile object (no pin, password, pass, or sandi columns imported)
+          const opObj: UserProfile = {
+            id: `USR-${badgeId}`,
+            badgeId,
+            name,
+            role,
+            department,
+            email: email || undefined,
+            lineAccess: ["*"]
+          };
+
+          // In Demo Mode, attach a safe mock PIN '1234' for local auth simulation
+          if (IS_DEMO_MODE) {
+            opObj.pin = "1234";
+          }
+
+          validatedOperators.push(opObj);
+          createdOrUpdatedCount++;
+        } catch (err) {
+          failedCount++;
+          validationErrors.push(`Baris ${idx + 1}: Gagal memproses data (${err instanceof Error ? err.message : "input rusak"}).`);
         }
-
-        const department = (
-          getValueByPossibleKeys(row, ["department", "departemen", "dept", "bagian"]) || 
-          String(row.department || "Production")
-        ).trim();
-
-        const pin = (
-          getValueByPossibleKeys(row, ["password", "pin", "pass", "sandi"]) || 
-          String(row.pin || row.password || "1234")
-        ).trim();
-
-        return {
-          id: `USR-${badgeId}`,
-          badgeId,
-          name,
-          role,
-          department,
-          pin,
-          lineAccess: ["*"]
-        };
       });
+
+      if (validatedOperators.length === 0) {
+        setUploadStatus({
+          success: false,
+          message: `Gagal mengimpor operator. Seluruh baris tidak valid atau dilewati.`,
+          summary: {
+            total: data.length,
+            created: 0,
+            skipped: skippedCount,
+            failed: failedCount,
+            errors: validationErrors
+          }
+        });
+        return;
+      }
 
       // Clear existing master operators first so we don't mix old mock operators
       try {
@@ -277,7 +363,7 @@ export const MasterDataManager: React.FC<MasterDataManagerProps> = ({
         console.warn("Could not pre-clear existing operators, overwriting directly:", err);
       }
 
-      await bulkUploadMasterOperatorsInDb(parsedOperators, currentUser ? {
+      await bulkUploadMasterOperatorsInDb(validatedOperators, currentUser ? {
         name: currentUser.name,
         id: currentUser.badgeId,
         role: currentUser.role
@@ -285,10 +371,17 @@ export const MasterDataManager: React.FC<MasterDataManagerProps> = ({
 
       setUploadStatus({
         success: true,
-        message: `Berhasil mengunggah ${parsedOperators.length} Master Operator ke Cloud Firestore.`,
+        message: `Impor operator selesai: ${createdOrUpdatedCount} berhasil, ${skippedCount} dilewati, ${failedCount} gagal.`,
+        summary: {
+          total: data.length,
+          created: createdOrUpdatedCount,
+          skipped: skippedCount,
+          failed: failedCount,
+          errors: validationErrors
+        }
       });
     } else if (targetTab === "lines") {
-      const parsedLines: AndonLine[] = data.map((row: any, idx: number) => {
+      const parsedLines: AndonLine[] = data.map((row: Record<string, unknown>, idx: number) => {
         const id = (
           getValueByPossibleKeys(row, ["id", "lineid", "liniid", "kodelini", "line_id"]) || 
           String(row.id || row.ID || row.LineID || `LINE-${idx + 1}`)
@@ -325,7 +418,7 @@ export const MasterDataManager: React.FC<MasterDataManagerProps> = ({
         if (typeof wsRaw === "string") {
           workstations = wsRaw.split(/[,;|]/).map((s: string) => s.trim()).filter(Boolean);
         } else if (Array.isArray(wsRaw)) {
-          workstations = wsRaw;
+          workstations = wsRaw as string[];
         }
 
         if (workstations.length === 0) {
@@ -366,7 +459,7 @@ export const MasterDataManager: React.FC<MasterDataManagerProps> = ({
         message: `Berhasil mengunggah ${parsedLines.length} Master Lini Produksi ke Cloud Firestore.`,
       });
     } else if (targetTab === "machines") {
-      const parsedMachines: MasterMachine[] = data.map((row: any, idx: number) => {
+      const parsedMachines: MasterMachine[] = data.map((row: Record<string, unknown>, idx: number) => {
         const id = (
           getValueByPossibleKeys(row, ["id", "machineid", "mesinid", "kodemesin", "machine_id"]) || 
           String(row.id || row.ID || row.MachineID || `MCH-${idx + 1}`)
@@ -445,21 +538,57 @@ export const MasterDataManager: React.FC<MasterDataManagerProps> = ({
       const sample = [
         {
           id: "LINE-1",
-          name: "Line 1: Machining Engine Block",
-          shortCode: "L1",
+          name: "Line 1: Machining & CNC Milling",
+          shortCode: "L1-MCN",
           department: "Machining",
-          leaderName: "Budi Santoso",
-          targetDaily: 600,
-          workstations: "OP-10 Milling, OP-20 Drilling, OP-30 QC Inspection",
+          leaderName: "Bambang Sutrisno",
+          targetDaily: 450,
+          workstations: "OP-10 Rough Cut; OP-20 CNC Mill; OP-30 CNC Lathe; OP-40 Deburring; OP-50 CMM Check",
         },
         {
           id: "LINE-2",
-          name: "Line 2: Stamping & Pressing",
-          shortCode: "L2",
-          department: "Press Shop",
-          leaderName: "Rudi Haryanto",
+          name: "Line 2: Stamping & Heavy Press",
+          shortCode: "L2-STP",
+          department: "Stamping",
+          leaderName: "Hendra Wijaya",
           targetDaily: 800,
-          workstations: "OP-10 Uncoiler, OP-20 500T Press, OP-30 Visual Buyoff",
+          workstations: "OP-10 Decoiler Feed; OP-20 500T Press; OP-30 Piercing Station; OP-40 Flange Trimming; OP-50 Visual Check",
+        },
+        {
+          id: "LINE-3",
+          name: "Line 3: Robotic Welding & Jig",
+          shortCode: "L3-WLD",
+          department: "Welding",
+          leaderName: "Dedi Kusuma",
+          targetDaily: 350,
+          workstations: "OP-10 Clamping Jig; OP-20 Robot Arm 1 Spot; OP-30 Robot Arm 2 MIG; OP-40 Manual Touch; OP-50 NDT Check",
+        },
+        {
+          id: "LINE-4",
+          name: "Line 4: Electrostatic Paint & Oven",
+          shortCode: "L4-PNT",
+          department: "Painting",
+          leaderName: "Surya Tanoto",
+          targetDaily: 500,
+          workstations: "OP-10 Chemical Degreasing; OP-20 Primer Dip; OP-30 Top Coat Spray; OP-40 Curing Oven 180C; OP-50 Gloss QC",
+        },
+        {
+          id: "LINE-5",
+          name: "Line 5: Main Final Assembly A",
+          shortCode: "L5-ASM",
+          department: "Assembly",
+          leaderName: "Ahmad Fauzi",
+          targetDaily: 600,
+          workstations: "OP-10 Sub-assembly Base; OP-20 Wire Harness Route; OP-30 Torque Tightening; OP-40 PCB & Sensor Fit; OP-50 Final Casing",
+        },
+        {
+          id: "LINE-6",
+          name: "Line 6: Testing QC & Packaging",
+          shortCode: "L6-PKG",
+          department: "Packaging",
+          leaderName: "Rian Pratama",
+          targetDaily: 600,
+          workstations: "OP-10 Electrical Test; OP-20 Functional Benchmark; OP-30 Barcode & Serial Label; OP-40 Box Packing; OP-50 Palletizing Robot",
         },
       ];
       const csv = Papa.unparse(sample);
@@ -467,25 +596,79 @@ export const MasterDataManager: React.FC<MasterDataManagerProps> = ({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "master_lines_template.csv";
+      a.download = "template_lines.csv";
       a.click();
     } else if (type === "machines") {
       const sample = [
         {
-          id: "CNC-01",
+          id: "MCH-001",
+          code: "CNC-MILL-01",
+          name: "5-Axis CNC Milling Center",
           lineId: "LINE-1",
-          stationId: "OP-10 Milling",
-          machineName: "5-Axis CNC Milling Center",
-          model: "Matsuura MX-520",
-          serialNumber: "SN-MATS-2024",
+          lineName: "Line 1: Machining & CNC Milling",
+          workstation: "OP-20 CNC Mill",
+          modelType: "Matsuura MX-520 High Speed",
+          serialNumber: "SN-MATS-2024-001",
         },
         {
-          id: "ROBOT-02",
+          id: "MCH-002",
+          code: "CNC-LATHE-01",
+          name: "High Precision CNC Lathe",
+          lineId: "LINE-1",
+          lineName: "Line 1: Machining & CNC Milling",
+          workstation: "OP-30 CNC Lathe",
+          modelType: "Mazak Quick Turn 250",
+          serialNumber: "SN-MZK-8921-002",
+        },
+        {
+          id: "MCH-003",
+          code: "PRESS-500T-A",
+          name: "Komatsu 500T Stamping Press",
+          lineId: "LINE-2",
+          lineName: "Line 2: Stamping & Heavy Press",
+          workstation: "OP-20 500T Press",
+          modelType: "Komatsu E2P500 Mechanical",
+          serialNumber: "SN-KMTS-500-A",
+        },
+        {
+          id: "MCH-004",
+          code: "ROBOT-WELD-A1",
+          name: "Fanuc 6-Axis Spot Welding Arm",
           lineId: "LINE-3",
-          stationId: "OP-20 Welding",
-          machineName: "Robotic MIG Welder Station",
-          model: "Fanuc ArcMate 120iD",
-          serialNumber: "SN-FANUC-988",
+          lineName: "Line 3: Robotic Welding & Jig",
+          workstation: "OP-20 Robot Arm 1 Spot",
+          modelType: "Fanuc ArcMate 120iD",
+          serialNumber: "SN-FNC-ARC-120",
+        },
+        {
+          id: "MCH-005",
+          code: "OVEN-CURING-01",
+          name: "Continuous Thermal Curing Oven",
+          lineId: "LINE-4",
+          lineName: "Line 4: Electrostatic Paint & Oven",
+          workstation: "OP-40 Curing Oven 180C",
+          modelType: "ThermaPro Conveyorized Oven",
+          serialNumber: "SN-OVEN-180-44",
+        },
+        {
+          id: "MCH-006",
+          code: "TORQUE-TX4-01",
+          name: "Atlas Copco Digital Nutrunner",
+          lineId: "LINE-5",
+          lineName: "Line 5: Main Final Assembly A",
+          workstation: "OP-30 Torque Tightening",
+          modelType: "Power Focus 6000 Controller",
+          serialNumber: "SN-AC-PF6K-09",
+        },
+        {
+          id: "MCH-007",
+          code: "LEAK-TEST-01",
+          name: "Helium Vacuum Leak Tester",
+          lineId: "LINE-6",
+          lineName: "Line 6: Testing QC & Packaging",
+          workstation: "OP-20 Functional Benchmark",
+          modelType: "Pfeiffer ASM 340",
+          serialNumber: "SN-LK-PFF-340",
         },
       ];
       const csv = Papa.unparse(sample);
@@ -493,38 +676,52 @@ export const MasterDataManager: React.FC<MasterDataManagerProps> = ({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "master_machines_template.csv";
+      a.download = "template_machines.csv";
       a.click();
     } else if (type === "operators") {
       const sample = [
         {
-          npk: "OP-1001",
-          name: "Ahmad Fauzi",
+          badgeId: "OP-1001",
+          name: "Agus Pratama",
           role: "operator",
-          department: "Production Machining",
-          password: "1234",
+          department: "Machining",
+          email: "agus.pratama@factory.local",
         },
         {
-          npk: "LD-2002",
-          name: "Bambang Wijaya",
+          badgeId: "OP-1002",
+          name: "Budi Santoso",
+          role: "operator",
+          department: "Stamping",
+          email: "budi.santoso@factory.local",
+        },
+        {
+          badgeId: "TECH-2001",
+          name: "Rudi Hermawan",
           role: "technician",
-          department: "Maintenance",
-          password: "abcd",
+          department: "Maintenance & Tooling",
+          email: "rudi.maint@factory.local",
         },
         {
-          npk: "ADM-9001",
-          name: "Siti Rahma",
+          badgeId: "SPV-3001",
+          name: "Hartono Mulyadi",
+          role: "supervisor",
+          department: "Production Operations",
+          email: "hartono.spv@factory.local",
+        },
+        {
+          badgeId: "ADMIN-99",
+          name: "Siti Rahayu",
           role: "admin",
-          department: "IT & Admin",
-          password: "admin",
-        }
+          department: "Plant Engineering & IT",
+          email: "admin.it@factory.local",
+        },
       ];
       const csv = Papa.unparse(sample);
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "master_operators_template.csv";
+      a.download = "template_operators.csv";
       a.click();
     }
   };
@@ -683,11 +880,13 @@ export const MasterDataManager: React.FC<MasterDataManagerProps> = ({
   };
 
   const handleExecuteCleanTrialData = () => {
+    setResetWord("");
     setConfirmModal({
       isOpen: true,
       title: t("cleanTrialDataTitle"),
       message: t("cleanTrialDataConfirm"),
       type: "danger",
+      requiresResetWord: !IS_DEMO_MODE,
       onConfirm: async () => {
         try {
           setIsCleaning(true);
@@ -760,17 +959,54 @@ export const MasterDataManager: React.FC<MasterDataManagerProps> = ({
 
       {/* Upload Notification Message */}
       {uploadStatus && (
-        <div className={`p-4 rounded-2xl border flex items-center gap-3 shadow-md ${
+        <div className={`p-5 rounded-2xl border flex flex-col gap-3 shadow-md transition-all ${
           uploadStatus.success
             ? isLight ? "bg-emerald-50 border-emerald-300 text-emerald-950" : "bg-emerald-950/40 border-emerald-500 text-emerald-200"
             : isLight ? "bg-red-50 border-red-300 text-red-950" : "bg-red-950/40 border-red-500 text-red-200"
         }`}>
-          {uploadStatus.success ? (
-            <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0" />
-          ) : (
-            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+          <div className="flex items-start gap-3">
+            {uploadStatus.success ? (
+              <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
+            ) : (
+              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+            )}
+            <div className="flex-1 space-y-1">
+              <p className="text-xs font-black">{uploadStatus.message}</p>
+              {uploadStatus.summary && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 text-[10px] font-bold uppercase tracking-wider">
+                  <div className={`p-2 rounded-xl border ${isLight ? "bg-white/60 border-slate-200" : "bg-black/30 border-neutral-800"}`}>
+                    Total: <span className="font-black">{uploadStatus.summary.total}</span>
+                  </div>
+                  <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                    Berhasil: <span className="font-black">{uploadStatus.summary.created}</span>
+                  </div>
+                  <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400">
+                    Dilewati: <span className="font-black">{uploadStatus.summary.skipped}</span>
+                  </div>
+                  <div className="p-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400">
+                    Gagal: <span className="font-black">{uploadStatus.summary.failed}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {uploadStatus.summary && uploadStatus.summary.errors.length > 0 && (
+            <div className={`mt-2 border-t pt-2 text-xs ${isLight ? "border-slate-200" : "border-neutral-800"}`}>
+              <details className="outline-none cursor-pointer">
+                <summary className="font-bold text-[10px] uppercase tracking-wider select-none hover:opacity-85">
+                  Lihat Detail Log Validasi ({uploadStatus.summary.errors.length} Pesan)
+                </summary>
+                <ul className={`mt-2 max-h-40 overflow-y-auto p-3 rounded-xl border font-mono text-[10px] space-y-1.5 list-disc pl-5 ${
+                  isLight ? "bg-white/80 border-slate-200 text-slate-700" : "bg-black/40 border-neutral-800 text-neutral-300"
+                }`}>
+                  {uploadStatus.summary.errors.map((err, i) => (
+                    <li key={i}>{err}</li>
+                  ))}
+                </ul>
+              </details>
+            </div>
           )}
-          <span className="text-xs font-semibold">{uploadStatus.message}</span>
         </div>
       )}
 
@@ -833,6 +1069,21 @@ export const MasterDataManager: React.FC<MasterDataManagerProps> = ({
           {t("templateAndGuideTab")}
         </button>
         <button
+          onClick={() => setActiveSubTab("branding")}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+            activeSubTab === "branding"
+              ? isLight
+                ? "bg-slate-900 text-white shadow-sm"
+                : "bg-amber-500 text-slate-950 shadow-sm"
+              : isLight
+              ? "text-slate-600 hover:bg-slate-100"
+              : "text-neutral-400 hover:text-white"
+          }`}
+        >
+          <Building2 className="w-3.5 h-3.5" />
+          <span>{language === "id" ? "Identitas & Logo" : "Logo & Branding"}</span>
+        </button>
+        <button
           onClick={() => setActiveSubTab("clean")}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
             activeSubTab === "clean"
@@ -846,6 +1097,13 @@ export const MasterDataManager: React.FC<MasterDataManagerProps> = ({
           <span>{t("masterCleanTab")}</span>
         </button>
       </div>
+
+      {/* Sub Tab Content: Branding & Logo */}
+      {activeSubTab === "branding" && (
+        <div className="space-y-4">
+          <BrandingSettingsCard theme={theme} language={language} />
+        </div>
+      )}
 
       {/* Sub Tab Content: 1. Lines */}
       {activeSubTab === "lines" && (
@@ -890,12 +1148,12 @@ export const MasterDataManager: React.FC<MasterDataManagerProps> = ({
                   <tr className={`border-b text-[11px] font-bold uppercase ${
                     isLight ? "border-slate-200 text-slate-500 bg-slate-50" : "border-neutral-800 text-neutral-400 bg-neutral-950/50"
                   }`}>
-                    <th className="py-3 px-4">Line Code & ID</th>
-                    <th className="py-3 px-4">Nama Lini Manufaktur</th>
-                    <th className="py-3 px-4">Departemen & Leader</th>
-                    <th className="py-3 px-4">Target Harian</th>
-                    <th className="py-3 px-4">Daftar Stasiun Kerja (Workstations)</th>
-                    {canManageMaster && <th className="py-3 px-4 text-right">Aksi</th>}
+                    <th className="py-3 px-4">{language === "en" ? "Line Code & ID" : "Kode & ID Lini"}</th>
+                    <th className="py-3 px-4">{language === "en" ? "Manufacturing Line Name" : "Nama Lini Manufaktur"}</th>
+                    <th className="py-3 px-4">{language === "en" ? "Department & Leader" : "Departemen & Leader"}</th>
+                    <th className="py-3 px-4">{language === "en" ? "Daily Target" : "Target Harian"}</th>
+                    <th className="py-3 px-4">{language === "en" ? "Workstations List" : "Daftar Stasiun Kerja (Workstations)"}</th>
+                    {canManageMaster && <th className="py-3 px-4 text-right">{language === "en" ? "Actions" : "Aksi"}</th>}
                   </tr>
                 </thead>
                 <tbody className={`divide-y font-medium ${isLight ? "divide-slate-200 text-slate-700" : "divide-neutral-800 text-neutral-300"}`}>
@@ -980,10 +1238,10 @@ export const MasterDataManager: React.FC<MasterDataManagerProps> = ({
                   <tr className={`border-b text-[11px] font-bold uppercase ${
                     isLight ? "border-slate-200 text-slate-500 bg-slate-50" : "border-neutral-800 text-neutral-400 bg-neutral-950/50"
                   }`}>
-                    <th className="py-3 px-4">Machine ID</th>
-                    <th className="py-3 px-4">Nama Mesin</th>
-                    <th className="py-3 px-4">Line & Stasiun Terpasang</th>
-                    <th className="py-3 px-4">Model & Serial Number</th>
+                    <th className="py-3 px-4">{language === "en" ? "Machine ID" : "ID Mesin"}</th>
+                    <th className="py-3 px-4">{language === "en" ? "Machine Name" : "Nama Mesin"}</th>
+                    <th className="py-3 px-4">{language === "en" ? "Installed Line & Station" : "Line & Stasiun Terpasang"}</th>
+                    <th className="py-3 px-4">{language === "en" ? "Model & Serial Number" : "Model & Serial Number"}</th>
                   </tr>
                 </thead>
                 <tbody className={`divide-y font-medium ${isLight ? "divide-slate-200 text-slate-700" : "divide-neutral-800 text-neutral-300"}`}>
@@ -1057,12 +1315,12 @@ export const MasterDataManager: React.FC<MasterDataManagerProps> = ({
                   <tr className={`border-b text-[11px] font-bold uppercase ${
                     isLight ? "border-slate-200 text-slate-500 bg-slate-50" : "border-neutral-800 text-neutral-400 bg-neutral-950/50"
                   }`}>
-                    <th className="py-3 px-4">NPK / User ID</th>
-                    <th className="py-3 px-4">Nama Lengkap</th>
-                    <th className="py-3 px-4">Departemen</th>
-                    <th className="py-3 px-4">Otoritas Sesi</th>
-                    <th className="py-3 px-4">Password / PIN</th>
-                    {canManageMaster && <th className="py-3 px-4 text-right">Aksi</th>}
+                    <th className="py-3 px-4">{language === "en" ? "Badge ID / User ID" : "NPK / User ID"}</th>
+                    <th className="py-3 px-4">{language === "en" ? "Full Name" : "Nama Lengkap"}</th>
+                    <th className="py-3 px-4">{language === "en" ? "Department" : "Departemen"}</th>
+                    <th className="py-3 px-4">{language === "en" ? "Role Authority" : "Otoritas Sesi"}</th>
+                    <th className="py-3 px-4">{language === "en" ? "Password / PIN" : "Password / PIN"}</th>
+                    {canManageMaster && <th className="py-3 px-4 text-right">{language === "en" ? "Actions" : "Aksi"}</th>}
                   </tr>
                 </thead>
                 <tbody className={`divide-y font-medium ${isLight ? "divide-slate-200 text-slate-700" : "divide-neutral-800 text-neutral-300"}`}>
@@ -1233,31 +1491,51 @@ export const MasterDataManager: React.FC<MasterDataManagerProps> = ({
               isLight ? "bg-slate-50 border-slate-200 text-slate-700" : "bg-neutral-950 border-neutral-800 text-neutral-300"
             }`}>
               <div className="font-bold text-[11px] uppercase tracking-wider text-slate-500">
-                Langkah Pembersihan Otomatis (Production Ready State):
+                {language === "en" ? "Automated Purge Steps (Production Ready State):" : "Langkah Pembersihan Otomatis (Production Ready State):"}
               </div>
               <ul className="space-y-2">
                 <li className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                  <span><strong>Hapus Seluruh Tiket Panggilan:</strong> Menghapus semua panggilan Andon aktif, dalam perbaikan, dan selesai dari Firestore.</span>
+                  <span>
+                    <strong>{language === "en" ? "Delete All Call Work Orders (WOs):" : "Hapus Seluruh Work Order (WO) Panggilan:"}</strong>{" "}
+                    {language === "en" 
+                      ? "Removes all active, in-repair, and completed Andon calls from Firestore database." 
+                      : "Menghapus semua panggilan Andon aktif, dalam perbaikan, dan selesai dari Firestore."}
+                  </span>
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                  <span><strong>Reset Status Lini Produksi:</strong> Mengembalikan seluruh 6 Lini ke status <em>Running</em> (100% Efisiensi, 0 Panggilan Aktif, Output 0).</span>
+                  <span>
+                    <strong>{language === "en" ? "Reset Production Lines Status:" : "Reset Status Lini Produksi:"}</strong>{" "}
+                    {language === "en"
+                      ? "Returns all lines to Running status (100% Efficiency, 0 Active Calls, 0 Output)."
+                      : "Mengembalikan seluruh lini ke status Running (100% Efisiensi, 0 Panggilan Aktif, Output 0)."}
+                  </span>
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                  <span><strong>Purge Log Aktivitas Trial:</strong> Menghapus riwayat audit trail simulasi dan mencatat inisialisasi resmi pabrik.</span>
+                  <span>
+                    <strong>{language === "en" ? "Purge Trial Activity Logs:" : "Purge Log Aktivitas Trial:"}</strong>{" "}
+                    {language === "en"
+                      ? "Clears trial simulation audit trail history and records official factory initialization."
+                      : "Menghapus riwayat audit trail simulasi dan mencatat inisialisasi resmi pabrik."}
+                  </span>
                 </li>
                 <li className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
-                  <span><strong>Bersihkan Cache Browser:</strong> Menghapus sisa mock state lokal di perangkat operator & display TV.</span>
+                  <span>
+                    <strong>{language === "en" ? "Clear Local Cache:" : "Bersihkan Cache Browser:"}</strong>{" "}
+                    {language === "en"
+                      ? "Removes lingering local state on operator tablets & TV displays."
+                      : "Menghapus sisa mock state lokal di perangkat operator & display TV."}
+                  </span>
                 </li>
               </ul>
             </div>
 
             {cleanMessage && (
               <div className={`p-4 rounded-2xl border flex items-center gap-3 shadow-md ${
-                cleanMessage.includes("Gagal")
+                cleanMessage.includes("Gagal") || cleanMessage.includes("Failed")
                   ? isLight ? "bg-red-50 border-red-300 text-red-950" : "bg-red-950/40 border-red-500 text-red-200"
                   : isLight ? "bg-emerald-50 border-emerald-300 text-emerald-950" : "bg-emerald-950/40 border-emerald-500 text-emerald-200"
               }`}>
@@ -1280,7 +1558,7 @@ export const MasterDataManager: React.FC<MasterDataManagerProps> = ({
                 {isCleaning ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Membersihkan Data...</span>
+                    <span>{language === "en" ? "Purging Data..." : "Membersihkan Data..."}</span>
                   </>
                 ) : (
                   <>
@@ -1576,6 +1854,25 @@ export const MasterDataManager: React.FC<MasterDataManagerProps> = ({
                 </p>
               </div>
             </div>
+            
+            {confirmModal.requiresResetWord && (
+              <div className="space-y-2">
+                <label className={`block text-xs font-bold ${isLight ? "text-slate-700" : "text-neutral-300"}`}>
+                  Silakan ketik <span className="text-red-500 font-black">RESET</span> untuk melakukan konfirmasi tindakan destruktif ini:
+                </label>
+                <input
+                  type="text"
+                  value={resetWord}
+                  onChange={(e) => setResetWord(e.target.value)}
+                  placeholder="Ketik RESET di sini"
+                  className={`w-full rounded-xl px-3 py-2 border font-mono text-center text-xs font-black uppercase tracking-widest focus:outline-none focus:ring-1 ${
+                    isLight 
+                      ? "bg-slate-50 border-slate-300 text-slate-900 focus:bg-white focus:ring-red-500" 
+                      : "bg-neutral-950 border-neutral-800 text-white focus:bg-neutral-900 focus:ring-red-500"
+                  }`}
+                />
+              </div>
+            )}
 
             <div className="flex items-center justify-end gap-2 pt-2">
               <button
@@ -1591,11 +1888,14 @@ export const MasterDataManager: React.FC<MasterDataManagerProps> = ({
               </button>
               <button
                 type="button"
+                disabled={confirmModal.requiresResetWord && resetWord.trim().toUpperCase() !== "RESET"}
                 onClick={confirmModal.onConfirm}
                 className={`px-5 py-2.5 rounded-xl text-xs font-black text-white shadow-md transition-all active:scale-95 ${
-                  confirmModal.type === "danger"
-                    ? "bg-red-600 hover:bg-red-500 shadow-red-500/25"
-                    : "bg-amber-500 hover:bg-amber-400 shadow-amber-500/25"
+                  confirmModal.requiresResetWord && resetWord.trim().toUpperCase() !== "RESET"
+                    ? "bg-slate-300 dark:bg-neutral-800 text-slate-400 dark:text-neutral-600 cursor-not-allowed"
+                    : confirmModal.type === "danger"
+                      ? "bg-red-600 hover:bg-red-500 shadow-red-500/25"
+                      : "bg-amber-500 hover:bg-amber-400 shadow-amber-500/25"
                 }`}
               >
                 Konfirmasi

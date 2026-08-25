@@ -3,20 +3,18 @@ import {
   History, 
   Search, 
   Filter, 
-  Trash2, 
   Download, 
   User, 
   Clock, 
-  ShieldAlert, 
   CheckCircle2, 
   Wrench, 
-  Sparkles,
-  AlertTriangle,
-  Layers,
-  Settings
+  AlertTriangle, 
+  Layers, 
+  Settings 
 } from "lucide-react";
 import { ActivityLog, UserProfile, AppTheme, AppLanguage } from "../types";
 import { formatTimestamp } from "../utils/storage";
+import { localizeActivityLog } from "../utils/activityLogger";
 import Papa from "papaparse";
 import { getTranslation, TranslationKey } from "../utils/i18n";
 
@@ -30,7 +28,7 @@ interface ActivityLogsViewerProps {
 
 export const ActivityLogsViewer: React.FC<ActivityLogsViewerProps> = ({
   logs,
-  currentUser,
+  currentUser: _currentUser,
   theme = "light",
   language = "id",
 }) => {
@@ -41,12 +39,12 @@ export const ActivityLogsViewer: React.FC<ActivityLogsViewerProps> = ({
     getTranslation(language, key, params);
 
   const isLight = theme === "light";
-  const canClearLogs = currentUser?.role === "admin";
 
   const filteredLogs = logs.filter((log) => {
+    const loc = localizeActivityLog(log, language);
     const matchesSearch =
-      log.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.details.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      loc.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      loc.details.toLowerCase().includes(searchTerm.toLowerCase()) ||
       log.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (log.ticketNo && log.ticketNo.toLowerCase().includes(searchTerm.toLowerCase()));
 
@@ -59,13 +57,13 @@ export const ActivityLogsViewer: React.FC<ActivityLogsViewerProps> = ({
     switch (action) {
       case "create_call":
         return {
-          label: language === "en" ? "New Ticket" : "Tiket Baru",
+          label: language === "en" ? "New WO" : "WO Baru",
           bg: isLight ? "bg-red-50 text-red-700 border-red-200" : "bg-red-500/20 text-red-400 border-red-500/30",
           icon: AlertTriangle,
         };
       case "acknowledge_call":
         return {
-          label: "Acknowledge",
+          label: language === "en" ? "Acknowledge" : "Acknowledge",
           bg: isLight ? "bg-blue-50 text-blue-700 border-blue-200" : "bg-blue-500/20 text-blue-400 border-blue-500/30",
           icon: Clock,
         };
@@ -84,19 +82,19 @@ export const ActivityLogsViewer: React.FC<ActivityLogsViewerProps> = ({
       case "upload_master":
       case "update_master":
         return {
-          label: "Master Data",
+          label: language === "en" ? "Master Data" : "Master Data",
           bg: isLight ? "bg-cyan-50 text-cyan-700 border-cyan-200" : "bg-cyan-500/20 text-cyan-400 border-cyan-500/30",
           icon: Layers,
         };
       case "login":
         return {
-          label: "Auth Sesi",
+          label: language === "en" ? "Auth Session" : "Auth Sesi",
           bg: isLight ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-amber-500/20 text-amber-400 border-amber-500/30",
           icon: User,
         };
       default:
         return {
-          label: "Sistem",
+          label: language === "en" ? "System" : "Sistem",
           bg: isLight ? "bg-slate-50 text-slate-700 border-slate-200" : "bg-neutral-800 text-neutral-300 border-neutral-700",
           icon: Settings,
         };
@@ -104,16 +102,19 @@ export const ActivityLogsViewer: React.FC<ActivityLogsViewerProps> = ({
   };
 
   const handleExportCsv = () => {
-    const data = filteredLogs.map((l) => ({
-      Timestamp: new Date(l.timestamp).toISOString(),
-      Aksi: l.action,
-      Judul: l.title,
-      Detail: l.details,
-      User: l.userName,
-      Role: l.userRole,
-      ID_Pengguna: l.userId,
-      Tiket: l.ticketNo || "-",
-    }));
+    const data = filteredLogs.map((l) => {
+      const loc = localizeActivityLog(l, language);
+      return {
+        Timestamp: new Date(l.timestamp).toISOString(),
+        Action: l.action,
+        Title: loc.title,
+        Details: loc.details,
+        User: l.userName,
+        Role: l.userRole,
+        User_ID: l.userId,
+        WO: l.ticketNo || "-",
+      };
+    });
 
     const csv = Papa.unparse(data);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -175,7 +176,7 @@ export const ActivityLogsViewer: React.FC<ActivityLogsViewerProps> = ({
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder={language === "en" ? "Search activity title, details, user name, ticket..." : "Cari judul aktivitas, detail, nama pengguna, tiket..."}
+            placeholder={language === "en" ? "Search activity title, details, user name, WO..." : "Cari judul aktivitas, detail, nama pengguna, WO..."}
             className={`w-full rounded-xl pl-9 pr-3 py-2 text-xs border focus:outline-none focus:ring-1 focus:ring-amber-500 ${
               isLight ? "bg-slate-50 border-slate-300 text-slate-900" : "bg-neutral-950 border-neutral-800 text-white"
             }`}
@@ -193,12 +194,12 @@ export const ActivityLogsViewer: React.FC<ActivityLogsViewerProps> = ({
             }`}
           >
             <option value="all">{language === "en" ? "All Activity Types" : "Semua Jenis Aktivitas"}</option>
-            <option value="create_call">Panggilan Tiket Baru</option>
-            <option value="acknowledge_call">Acknowledge</option>
-            <option value="in_progress_call">Mulai Perbaikan</option>
-            <option value="resolve_call">Penutupan Tiket</option>
-            <option value="master_upload">Upload Master Data</option>
-            <option value="login">Sesi Otoritas Login</option>
+            <option value="create_call">{language === "en" ? "New Andon WO Call" : "Panggilan WO Baru"}</option>
+            <option value="acknowledge_call">{language === "en" ? "Acknowledge Response" : "Acknowledge Respon"}</option>
+            <option value="in_progress_call">{language === "en" ? "Start Repair Work" : "Mulai Perbaikan"}</option>
+            <option value="resolve_call">{language === "en" ? "Close WO Resolution" : "Penutupan WO"}</option>
+            <option value="upload_master">{language === "en" ? "Upload Master Data" : "Upload Master Data"}</option>
+            <option value="login">{language === "en" ? "User Authority Login" : "Sesi Otoritas Login"}</option>
           </select>
         </div>
       </div>
@@ -213,11 +214,11 @@ export const ActivityLogsViewer: React.FC<ActivityLogsViewerProps> = ({
               <tr className={`border-b text-[11px] font-bold uppercase ${
                 isLight ? "border-slate-200 text-slate-500 bg-slate-50" : "border-neutral-800 text-neutral-400 bg-neutral-950/50"
               }`}>
-                <th className="py-3 px-4">Waktu (Timestamp)</th>
-                <th className="py-3 px-4">Kategori Aksi</th>
-                <th className="py-3 px-4">Aktivitas & Keterangan</th>
-                <th className="py-3 px-4">Pengguna (Actor)</th>
-                <th className="py-3 px-4">Tiket Terkait</th>
+                <th className="py-3 px-4">{language === "en" ? "Timestamp" : "Waktu (Timestamp)"}</th>
+                <th className="py-3 px-4">{language === "en" ? "Action Category" : "Kategori Aksi"}</th>
+                <th className="py-3 px-4">{language === "en" ? "Activity & Details" : "Aktivitas & Keterangan"}</th>
+                <th className="py-3 px-4">{language === "en" ? "User (Actor)" : "Pengguna (Actor)"}</th>
+                <th className="py-3 px-4">{language === "en" ? "Related WO" : "WO Terkait"}</th>
               </tr>
             </thead>
             <tbody className={`divide-y font-medium ${isLight ? "divide-slate-200 text-slate-700" : "divide-neutral-800 text-neutral-300"}`}>
@@ -231,6 +232,7 @@ export const ActivityLogsViewer: React.FC<ActivityLogsViewerProps> = ({
                 filteredLogs.map((log) => {
                   const badge = getActionBadge(log.action);
                   const Icon = badge.icon;
+                  const loc = localizeActivityLog(log, language);
 
                   return (
                     <tr key={log.id} className={isLight ? "hover:bg-slate-50" : "hover:bg-neutral-800/40"}>
@@ -244,8 +246,8 @@ export const ActivityLogsViewer: React.FC<ActivityLogsViewerProps> = ({
                         </span>
                       </td>
                       <td className="py-3 px-4">
-                        <div className={`font-bold ${isLight ? "text-slate-900" : "text-white"}`}>{log.title}</div>
-                        <div className={`text-[11px] mt-0.5 line-clamp-2 ${isLight ? "text-slate-500" : "text-neutral-400"}`}>{log.details}</div>
+                        <div className={`font-bold ${isLight ? "text-slate-900" : "text-white"}`}>{loc.title}</div>
+                        <div className={`text-[11px] mt-0.5 line-clamp-2 ${isLight ? "text-slate-500" : "text-neutral-400"}`}>{loc.details}</div>
                       </td>
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-1.5">
@@ -278,3 +280,4 @@ export const ActivityLogsViewer: React.FC<ActivityLogsViewerProps> = ({
     </div>
   );
 };
+

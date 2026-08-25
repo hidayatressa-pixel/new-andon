@@ -1,5 +1,6 @@
 import { AndonCall, AndonLine, SoundConfig, AppTheme, AppLanguage } from "../types";
 import { INITIAL_CALLS, INITIAL_LINES, DEFAULT_SOUND_CONFIG } from "./initialData";
+import { safeLocalStorageSet, safeLocalStorageGet } from "./sanitizer";
 
 const STORAGE_KEYS = {
   CALLS: "andon_smart_factory_calls_v1",
@@ -12,7 +13,7 @@ const STORAGE_KEYS = {
 export function loadSavedTheme(): AppTheme {
   if (typeof window === "undefined") return "light";
   try {
-    const saved = localStorage.getItem(STORAGE_KEYS.THEME);
+    const saved = safeLocalStorageGet(STORAGE_KEYS.THEME);
     if (saved === "dark" || saved === "light") return saved;
   } catch (e) {
     console.error("Failed to load theme:", e);
@@ -23,8 +24,9 @@ export function loadSavedTheme(): AppTheme {
 export function saveThemeToStorage(theme: AppTheme): void {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(STORAGE_KEYS.THEME, theme);
-    if (theme === "dark") {
+    const safeTheme: AppTheme = theme === "dark" ? "dark" : "light";
+    safeLocalStorageSet(STORAGE_KEYS.THEME, safeTheme);
+    if (safeTheme === "dark") {
       document.documentElement.classList.add("dark");
     } else {
       document.documentElement.classList.remove("dark");
@@ -35,20 +37,21 @@ export function saveThemeToStorage(theme: AppTheme): void {
 }
 
 export function loadSavedLanguage(): AppLanguage {
-  if (typeof window === "undefined") return "id";
+  if (typeof window === "undefined") return "en";
   try {
-    const saved = localStorage.getItem(STORAGE_KEYS.LANGUAGE);
+    const saved = safeLocalStorageGet(STORAGE_KEYS.LANGUAGE);
     if (saved === "id" || saved === "en") return saved;
   } catch (e) {
     console.error("Failed to load language:", e);
   }
-  return "id"; // Default is Bahasa Indonesia
+  return "en"; // Default is English
 }
 
 export function saveLanguageToStorage(lang: AppLanguage): void {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(STORAGE_KEYS.LANGUAGE, lang);
+    const safeLang: AppLanguage = lang === "id" ? "id" : "en";
+    safeLocalStorageSet(STORAGE_KEYS.LANGUAGE, safeLang);
   } catch (e) {
     console.error("Failed to save language:", e);
   }
@@ -57,7 +60,7 @@ export function saveLanguageToStorage(lang: AppLanguage): void {
 export function loadSavedCalls(): AndonCall[] {
   if (typeof window === "undefined") return INITIAL_CALLS;
   try {
-    const saved = localStorage.getItem(STORAGE_KEYS.CALLS);
+    const saved = safeLocalStorageGet(STORAGE_KEYS.CALLS);
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) return parsed;
@@ -71,7 +74,7 @@ export function loadSavedCalls(): AndonCall[] {
 export function saveCallsToStorage(calls: AndonCall[]): void {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(STORAGE_KEYS.CALLS, JSON.stringify(calls));
+    safeLocalStorageSet(STORAGE_KEYS.CALLS, JSON.stringify(calls));
   } catch (e) {
     console.error("Failed to save calls:", e);
   }
@@ -80,7 +83,7 @@ export function saveCallsToStorage(calls: AndonCall[]): void {
 export function loadSavedLines(): AndonLine[] {
   if (typeof window === "undefined") return INITIAL_LINES;
   try {
-    const saved = localStorage.getItem(STORAGE_KEYS.LINES);
+    const saved = safeLocalStorageGet(STORAGE_KEYS.LINES);
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) return parsed;
@@ -94,7 +97,7 @@ export function loadSavedLines(): AndonLine[] {
 export function saveLinesToStorage(lines: AndonLine[]): void {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(STORAGE_KEYS.LINES, JSON.stringify(lines));
+    safeLocalStorageSet(STORAGE_KEYS.LINES, JSON.stringify(lines));
   } catch (e) {
     console.error("Failed to save lines:", e);
   }
@@ -103,7 +106,7 @@ export function saveLinesToStorage(lines: AndonLine[]): void {
 export function loadSoundConfig(): SoundConfig {
   if (typeof window === "undefined") return DEFAULT_SOUND_CONFIG;
   try {
-    const saved = localStorage.getItem(STORAGE_KEYS.SOUND_CONFIG);
+    const saved = safeLocalStorageGet(STORAGE_KEYS.SOUND_CONFIG);
     if (saved) return JSON.parse(saved);
   } catch (e) {
     console.error("Failed to load sound config:", e);
@@ -114,7 +117,7 @@ export function loadSoundConfig(): SoundConfig {
 export function saveSoundConfig(config: SoundConfig): void {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(STORAGE_KEYS.SOUND_CONFIG, JSON.stringify(config));
+    safeLocalStorageSet(STORAGE_KEYS.SOUND_CONFIG, JSON.stringify(config));
   } catch (e) {
     console.error("Failed to save sound config:", e);
   }
@@ -129,14 +132,14 @@ export function formatDuration(ms: number): string {
   const seconds = totalSeconds % 60;
 
   if (hours > 0) {
-    return `${hours}j ${minutes}m ${seconds}s`;
+    return `${hours}h ${minutes}m ${seconds}s`;
   }
   return `${minutes}m ${seconds < 10 ? '0' : ''}${seconds}s`;
 }
 
 export function formatTimestamp(timestamp: number): string {
   const date = new Date(timestamp);
-  return date.toLocaleTimeString("id-ID", {
+  return date.toLocaleTimeString("en-US", {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",

@@ -9,20 +9,20 @@ import {
   TrendingUp, 
   Activity, 
   Zap,
-  Check,
+  HelpCircle,
+  Boxes,
+  ChevronUp,
+  ChevronDown,
   PhoneCall,
   Tv,
   Wrench,
-  Database,
-  HelpCircle,
-  ChevronDown,
-  ChevronUp,
-  Boxes
+  Database
 } from "lucide-react";
 import { AndonCall, AndonLine, AppTheme, AppLanguage } from "../types";
 import { CATEGORIES_DATA, normalizeCategoryToPrimary } from "../utils/categories";
 import { formatDuration, formatTimestamp } from "../utils/storage";
 import { getTranslation, TranslationKey } from "../utils/i18n";
+import { safeLocalStorageSet, safeLocalStorageGet } from "../utils/sanitizer";
 
 interface MainAndonBoardProps {
   lines: AndonLine[];
@@ -43,7 +43,7 @@ export const MainAndonBoard: React.FC<MainAndonBoardProps> = ({
 }) => {
   const [timerTick, setTimerTick] = useState(Date.now());
   const [showGuide, setShowGuide] = useState<boolean>(() => {
-    return localStorage.getItem("andon_show_guide") !== "false";
+    return safeLocalStorageGet("andon_show_guide") !== "false";
   });
 
   const t = (key: TranslationKey, params?: Record<string, string | number>) => 
@@ -54,7 +54,7 @@ export const MainAndonBoard: React.FC<MainAndonBoardProps> = ({
   const toggleGuide = () => {
     const nextState = !showGuide;
     setShowGuide(nextState);
-    localStorage.setItem("andon_show_guide", String(nextState));
+    safeLocalStorageSet("andon_show_guide", String(nextState));
   };
 
   useEffect(() => {
@@ -136,7 +136,7 @@ export const MainAndonBoard: React.FC<MainAndonBoardProps> = ({
                 onClick={() => onNavigateToCall(lines[0]?.id || "LINE-1")}
                 className={`mt-2.5 text-[11px] font-bold text-amber-700 dark:text-amber-400 hover:underline flex items-center gap-1`}
               >
-                <span>Buka Terminal Operator</span>
+                <span>{language === "en" ? "Open Operator Terminal" : "Buka Terminal Operator"}</span>
                 <ArrowRight className="w-3 h-3" />
               </button>
             </div>
@@ -157,7 +157,7 @@ export const MainAndonBoard: React.FC<MainAndonBoardProps> = ({
                 </p>
               </div>
               <span className={`mt-2.5 text-[11px] font-medium ${isLight ? "text-slate-400" : "text-neutral-500"}`}>
-                Real-time WebSocket & Audio
+                Real-time Sync & Audio Alert
               </span>
             </div>
 
@@ -177,7 +177,7 @@ export const MainAndonBoard: React.FC<MainAndonBoardProps> = ({
                 </p>
               </div>
               <span className={`mt-2.5 text-[11px] font-medium ${isLight ? "text-slate-400" : "text-neutral-500"}`}>
-                Penanganan cepat di lini
+                {language === "en" ? "Rapid On-Site Response" : "Penanganan cepat di lini"}
               </span>
             </div>
 
@@ -403,7 +403,7 @@ export const MainAndonBoard: React.FC<MainAndonBoardProps> = ({
               statusBadge = (
                 <span className="bg-red-600 text-white text-xs px-2.5 py-0.5 rounded-lg font-bold flex items-center gap-1 animate-pulse shadow-sm">
                   <Flame className="w-3.5 h-3.5" />
-                  ABNORMAL MESIN
+                  {language === "en" ? "MACHINE ABNORMALITY" : "ABNORMAL MESIN"}
                 </span>
               );
             } else if (hasYellow) {
@@ -423,7 +423,7 @@ export const MainAndonBoard: React.FC<MainAndonBoardProps> = ({
               statusBadge = (
                 <span className="bg-emerald-600 text-white text-xs px-2.5 py-0.5 rounded-lg font-bold flex items-center gap-1 shadow-sm">
                   <Boxes className="w-3.5 h-3.5" />
-                  CALLING MATERIAL
+                  {language === "en" ? "CALLING MATERIAL SUPPORT" : "CALLING MATERIAL"}
                 </span>
               );
             }
@@ -632,13 +632,13 @@ export const MainAndonBoard: React.FC<MainAndonBoardProps> = ({
                     ? "border-slate-200 text-slate-500 bg-slate-50" 
                     : "border-neutral-800 text-neutral-400 bg-neutral-950/50"
                 }`}>
-                  <th className="py-2.5 px-3">Tiket & Waktu</th>
-                  <th className="py-2.5 px-3">Lini / Stasiun</th>
-                  <th className="py-2.5 px-3">Kategori Masalah</th>
-                  <th className="py-2.5 px-3">Kondisi Line</th>
+                  <th className="py-2.5 px-3">{language === "en" ? "WO & Time" : "WO & Waktu"}</th>
+                  <th className="py-2.5 px-3">{language === "en" ? "Line / Station" : "Lini / Stasiun"}</th>
+                  <th className="py-2.5 px-3">{language === "en" ? "Issue Category" : "Kategori Masalah"}</th>
+                  <th className="py-2.5 px-3">{language === "en" ? "Line Condition" : "Kondisi Line"}</th>
                   <th className="py-2.5 px-3">{t("waitTime")}</th>
                   <th className="py-2.5 px-3">Status</th>
-                  <th className="py-2.5 px-3 text-right">Aksi</th>
+                  <th className="py-2.5 px-3 text-right">{language === "en" ? "Action" : "Aksi"}</th>
                 </tr>
               </thead>
               <tbody className={`divide-y font-medium ${isLight ? "divide-slate-200 text-slate-700" : "divide-neutral-800/60 text-neutral-300"}`}>

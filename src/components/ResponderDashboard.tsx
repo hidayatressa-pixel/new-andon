@@ -3,7 +3,6 @@ import {
   Wrench, 
   Clock, 
   CheckCircle2, 
-  Flame, 
   User, 
   ArrowRight, 
   Check, 
@@ -12,7 +11,7 @@ import {
   PlayCircle
 } from "lucide-react";
 import confetti from "canvas-confetti";
-import { AndonCall, CallStatus, CallCategory, UserProfile, AppTheme, AppLanguage } from "../types";
+import { AndonCall, CallStatus, UserProfile, AppTheme, AppLanguage } from "../types";
 import { CATEGORIES_DATA } from "../utils/categories";
 import { formatDuration, formatTimestamp } from "../utils/storage";
 import { getTranslation, TranslationKey } from "../utils/i18n";
@@ -188,7 +187,7 @@ export const ResponderDashboard: React.FC<ResponderDashboardProps> = ({
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder={language === "en" ? "Search ticket, line, station, or keywords..." : "Cari nomor tiket, line, stasiun, atau kata kunci..."}
+            placeholder={language === "en" ? "Search WO, line, station, or keywords..." : "Cari nomor WO, line, stasiun, atau kata kunci..."}
             className={`w-full rounded-xl pl-9 pr-3 py-2 text-xs border focus:outline-none focus:ring-1 focus:ring-amber-500 ${
               isLight
                 ? "bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400"
@@ -213,7 +212,7 @@ export const ResponderDashboard: React.FC<ResponderDashboardProps> = ({
                 : "text-neutral-400 hover:text-neutral-200"
             }`}
           >
-            {language === "en" ? "Active Tickets" : "Tiket Aktif"} ({activeCount})
+            {language === "en" ? "Active WOs" : "WO Aktif"} ({activeCount})
           </button>
           <button
             onClick={() => setFilterStatus("resolved")}
@@ -279,7 +278,7 @@ export const ResponderDashboard: React.FC<ResponderDashboardProps> = ({
               {t("noActiveCalls")}
             </div>
             <div className={`text-xs mt-1 ${isLight ? "text-slate-500" : "text-neutral-500"}`}>
-              {language === "en" ? "All lines are operating normally." : "Seluruh lini dalam kondisi normal atau tidak ada tiket yang cocok dengan filter."}
+              {language === "en" ? "All lines are operating normally." : "Seluruh lini dalam kondisi normal atau tidak ada WO yang cocok dengan filter."}
             </div>
           </div>
         ) : (
@@ -477,7 +476,7 @@ export const ResponderDashboard: React.FC<ResponderDashboardProps> = ({
                   {resolvingCall.ticketNo}
                 </span>
                 <h3 className={`text-lg font-black ${isLight ? "text-slate-900" : "text-white"}`}>
-                  {language === "en" ? "Close Ticket & Root Cause Form" : "Formulir Penutupan Tiket & Analisis Masalah"}
+                  {language === "en" ? "Close Work Order (WO) & Root Cause Form" : "Formulir Penutupan Work Order (WO) & Analisis Masalah"}
                 </h3>
                 <p className={`text-xs ${isLight ? "text-slate-500" : "text-neutral-400"}`}>
                   {resolvingCall.lineName} • {resolvingCall.workstation}

@@ -16,8 +16,8 @@ export const INITIAL_LINES: AndonLine[] = [
     targetDaily: 450,
     actualOutput: 0,
     efficiency: 100,
-    leaderName: "Leader Shift 1",
-    currentShift: "Shift 1 (Pagi)"
+    leaderName: "Shift 1 Leader",
+    currentShift: "Shift 1 (Morning)"
   },
   {
     id: "LINE-2",
@@ -30,8 +30,8 @@ export const INITIAL_LINES: AndonLine[] = [
     targetDaily: 800,
     actualOutput: 0,
     efficiency: 100,
-    leaderName: "Leader Shift 1",
-    currentShift: "Shift 1 (Pagi)"
+    leaderName: "Shift 1 Leader",
+    currentShift: "Shift 1 (Morning)"
   },
   {
     id: "LINE-3",
@@ -44,8 +44,8 @@ export const INITIAL_LINES: AndonLine[] = [
     targetDaily: 350,
     actualOutput: 0,
     efficiency: 100,
-    leaderName: "Leader Shift 1",
-    currentShift: "Shift 1 (Pagi)"
+    leaderName: "Shift 1 Leader",
+    currentShift: "Shift 1 (Morning)"
   },
   {
     id: "LINE-4",
@@ -58,8 +58,8 @@ export const INITIAL_LINES: AndonLine[] = [
     targetDaily: 500,
     actualOutput: 0,
     efficiency: 100,
-    leaderName: "Leader Shift 1",
-    currentShift: "Shift 1 (Pagi)"
+    leaderName: "Shift 1 Leader",
+    currentShift: "Shift 1 (Morning)"
   },
   {
     id: "LINE-5",
@@ -72,8 +72,8 @@ export const INITIAL_LINES: AndonLine[] = [
     targetDaily: 600,
     actualOutput: 0,
     efficiency: 100,
-    leaderName: "Leader Shift 1",
-    currentShift: "Shift 1 (Pagi)"
+    leaderName: "Shift 1 Leader",
+    currentShift: "Shift 1 (Morning)"
   },
   {
     id: "LINE-6",
@@ -86,8 +86,8 @@ export const INITIAL_LINES: AndonLine[] = [
     targetDaily: 600,
     actualOutput: 0,
     efficiency: 100,
-    leaderName: "Leader Shift 1",
-    currentShift: "Shift 1 (Pagi)"
+    leaderName: "Shift 1 Leader",
+    currentShift: "Shift 1 (Morning)"
   }
 ];
 
@@ -103,43 +103,43 @@ export const INITIAL_MACHINES: MasterMachine[] = [
 export const INITIAL_OPERATORS: UserProfile[] = [
   {
     id: "OP-1001",
-    name: "Agus Pratama",
+    name: "Alex Pratama",
     badgeId: "OP-1001",
     role: "operator",
     department: "Machining",
     pin: "1234",
     lineAccess: ["LINE-1", "LINE-2"],
-    email: "agus.op@factory.local"
+    email: "alex.op@factory.local"
   },
   {
     id: "TECH-2001",
-    name: "Rudi Hermawan (Teknisi Maintenance)",
+    name: "Rudy Herman (Maintenance Technician)",
     badgeId: "TECH-2001",
     role: "technician",
     department: "Maintenance & Tooling",
     pin: "1234",
     lineAccess: ["*"],
-    email: "rudi.tech@factory.local"
+    email: "rudy.tech@factory.local"
   },
   {
     id: "SPV-3001",
-    name: "Budi Santoso (Production Supervisor)",
+    name: "Brian Santos (Production Supervisor)",
     badgeId: "SPV-3001",
     role: "supervisor",
     department: "Production Control",
     pin: "1234",
     lineAccess: ["*"],
-    email: "budi.spv@factory.local"
+    email: "brian.spv@factory.local"
   },
   {
-    id: "USR-ressa20",
-    name: "Ressa Hidayat (Administrator)",
-    badgeId: "ressa20",
+    id: "USR-admin01",
+    name: "Lead Plant Administrator",
+    badgeId: "admin01",
     role: "admin",
     department: "Plant Management & IT",
-    pin: "020420",
+    pin: "8888",
     lineAccess: ["*"],
-    email: "hidayatressa@gmail.com"
+    email: "admin@smartandon.local"
   }
 ];
 
@@ -148,6 +148,6 @@ export const DEFAULT_SOUND_CONFIG: SoundConfig = {
   volume: 0.8,
   alarmType: "industrial_siren",
   voiceAnnouncement: true,
-  voiceLanguage: "id-ID",
+  voiceLanguage: "en-US",
   escalationMinutes: 5
 };

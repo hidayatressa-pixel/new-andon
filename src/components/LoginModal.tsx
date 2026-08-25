@@ -8,6 +8,7 @@ import { UserProfile, UserRole, AppTheme, AppLanguage } from "../types";
 import { DEFAULT_USERS, saveSession } from "../utils/auth";
 import { logActivity } from "../lib/firestoreService";
 import { getTranslation, TranslationKey } from "../utils/i18n";
+import { sanitizeString, sanitizeUserProfile } from "../utils/sanitizer";
 
 interface LoginModalProps {
   isOpen: boolean;
@@ -50,19 +51,20 @@ export const LoginModal: React.FC<LoginModalProps> = ({
 
   const handleCustomLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customName.trim()) {
+    const cleanName = sanitizeString(customName).trim();
+    if (!cleanName) {
       setErrorMessage(language === "en" ? "Please enter full name or Badge ID." : "Silakan masukkan nama lengkap atau ID badge.");
       return;
     }
 
-    const newUser: UserProfile = {
+    const newUser: UserProfile = sanitizeUserProfile({
       id: `USR-${Date.now()}`,
-      name: customName.trim(),
+      name: cleanName,
       badgeId: `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
       role: customRole,
       department: customRole === "technician" ? "Maintenance Dept" : customRole === "supervisor" ? "Production Control" : customRole === "admin" ? "Plant IT" : "Shop Floor Operations",
       lineAccess: ["*"],
-    };
+    });
 
     saveSession(newUser);
     logActivity(

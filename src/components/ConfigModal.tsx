@@ -3,26 +3,23 @@ import {
   Volume2, 
   Settings, 
   Play, 
-  Sliders, 
-  Radio, 
   Mic, 
-  Clock, 
   Check, 
-  AlertTriangle,
-  Sun,
-  Moon,
-  Globe,
-  Palette,
-  CheckCircle2,
-  Sparkles,
-  ShieldAlert,
-  RefreshCw
+  Sun, 
+  Moon, 
+  Globe, 
+  Palette, 
+  CheckCircle2, 
+  Sparkles, 
+  ShieldAlert, 
+  RefreshCw 
 } from "lucide-react";
 import { SoundConfig, AndonLine, AppTheme, AppLanguage, UserProfile } from "../types";
 import { playAndonSound, speakAndonCall } from "../utils/audioAlert";
 import { getTranslation, TranslationKey } from "../utils/i18n";
 import { clearAllTrialDataInDb } from "../lib/firestoreService";
 import { INITIAL_LINES } from "../utils/initialData";
+import { BrandingSettingsCard } from "./BrandingSettingsCard";
 
 interface ConfigModalProps {
   isOpen: boolean;
@@ -135,7 +132,10 @@ export const ConfigModal: React.FC<ConfigModalProps> = ({
         </div>
 
         <div className="space-y-5 text-xs max-h-[70vh] overflow-y-auto pr-1">
-          {/* 1. THEME SETTING (2 OPTIONS, LIGHT IS DEFAULT) */}
+          {/* 1. BRANDING & CUSTOM LOGO */}
+          <BrandingSettingsCard theme={theme} language={language} />
+
+          {/* 2. THEME SETTING (2 OPTIONS, LIGHT IS DEFAULT) */}
           <div className={`p-4 rounded-2xl border space-y-3 ${
             isLight ? "bg-slate-50 border-slate-200" : "bg-neutral-950 border-neutral-800"
           }`}>

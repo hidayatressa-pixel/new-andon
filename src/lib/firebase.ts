@@ -1,32 +1,79 @@
-import { initializeApp, getApps, getApp } from "firebase/app";
+import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
+import { getAuth, Auth } from "firebase/auth";
 import { 
   getFirestore, 
-  collection, 
-  doc, 
-  setDoc, 
-  getDoc, 
-  getDocs, 
-  onSnapshot, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  query, 
-  orderBy, 
-  where, 
-  serverTimestamp, 
-  writeBatch 
+  Firestore
 } from "firebase/firestore";
-import firebaseConfig from "../../firebase-applet-config.json";
 
-// Initialize Firebase App
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+// Read Firebase configurations strictly from environment variables
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "",
+  firestoreDatabaseId: import.meta.env.VITE_FIREBASE_DATABASE_ID || "",
+};
 
-// Use the database ID from config if available, otherwise default
-const databaseId = firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== "(default)"
-  ? firebaseConfig.firestoreDatabaseId 
-  : undefined;
+export const isFirebaseConfigured = (): boolean => {
+  return Boolean(
+    firebaseConfig.apiKey && 
+    firebaseConfig.apiKey.trim() !== "" && 
+    firebaseConfig.apiKey !== "your_api_key_here" &&
+    firebaseConfig.projectId &&
+    firebaseConfig.projectId.trim() !== "" &&
+    firebaseConfig.projectId !== "your_project_id"
+  );
+};
 
-export const db = databaseId ? getFirestore(app, databaseId) : getFirestore(app);
+// Lazy & safe initialization to prevent startup crashes when keys are absent
+let firebaseAppInstance: FirebaseApp | null = null;
+let firestoreInstance: Firestore | null = null;
+let authInstance: Auth | null = null;
+
+export function getFirebaseApp(): FirebaseApp {
+  if (!firebaseAppInstance) {
+    if (getApps().length > 0) {
+      firebaseAppInstance = getApp();
+    } else {
+      firebaseAppInstance = initializeApp(
+        isFirebaseConfigured()
+          ? firebaseConfig
+          : {
+              apiKey: "demo-api-key-safe-fallback",
+              authDomain: "demo-andon-plant.firebaseapp.com",
+              projectId: "demo-andon-plant",
+              storageBucket: "demo-andon-plant.appspot.com",
+              messagingSenderId: "000000000000",
+              appId: "1:000000000000:web:0000000000000000000000"
+            }
+      );
+    }
+  }
+  return firebaseAppInstance;
+}
+
+export function getDb(): Firestore {
+  if (!firestoreInstance) {
+    const app = getFirebaseApp();
+    const dbId = firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId !== "(default)"
+      ? firebaseConfig.firestoreDatabaseId 
+      : undefined;
+    firestoreInstance = dbId ? getFirestore(app, dbId) : getFirestore(app);
+  }
+  return firestoreInstance;
+}
+
+export function getFirebaseAuth(): Auth {
+  if (!authInstance) {
+    authInstance = getAuth(getFirebaseApp());
+  }
+  return authInstance;
+}
+
+export const db = getDb();
+export const auth = getFirebaseAuth();
 
 // Collection references
 export const COLLECTIONS = {
@@ -35,6 +82,7 @@ export const COLLECTIONS = {
   MACHINES: "master_machines",
   WORKSTATIONS: "master_workstations",
   USERS: "users",
-  ACTIVITY_LOGS: "activity_logs",
-  SYSTEM_CONFIG: "system_config",
-};
+  OPERATORS: "master_operators",
+  LOGS: "activity_logs",
+  CONFIG: "system_config",
+} as const;

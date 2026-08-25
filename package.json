@@ -1,7 +1,8 @@
 {
-  "name": "react-example",
-  "private": true,
-  "version": "0.0.0",
+  "name": "smart-andon-manufacturing-system",
+  "private": false,
+  "version": "1.0.0",
+  "description": "Premium real-time shopfloor alert, escalation, and analytics platform for smart manufacturing plants.",
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",

@@ -10,7 +10,7 @@ export const CATEGORIES_DATA: Record<CallCategory, CategoryMetadata> = {
   // 1. MERAH = ABNORMAL MESIN
   abnormal_machine: {
     id: "abnormal_machine",
-    label: "ABNORMAL MESIN",
+    label: "MACHINE ABNORMALITY",
     labelEn: "MACHINE ABNORMALITY",
     icon: "Flame",
     color: "red",
@@ -21,7 +21,7 @@ export const CATEGORIES_DATA: Record<CallCategory, CategoryMetadata> = {
     soundPitch: 880,
     towerColor: "red"
   },
-  // 2. KUNING = CALLING LEADER (ABNORMAL KUALITAS, PROSES, DAN PRODUKTIVITAS)
+  // 2. KUNING = CALLING LEADER (QUALITY, PROCESS, & PRODUCTIVITY)
   leader_call: {
     id: "leader_call",
     label: "CALLING LEADER",
@@ -35,7 +35,7 @@ export const CATEGORIES_DATA: Record<CallCategory, CategoryMetadata> = {
     soundPitch: 660,
     towerColor: "yellow"
   },
-  // 3. HIJAU = CALLING MATERIAL SUPPORT (PENGADAAN MATERIAL / ABNORMALITY MATERIAL)
+  // 3. HIJAU = CALLING MATERIAL SUPPORT (MATERIAL SUPPLY / REPLENISHMENT)
   material_support: {
     id: "material_support",
     label: "CALLING MATERIAL SUPPORT",
@@ -53,7 +53,7 @@ export const CATEGORIES_DATA: Record<CallCategory, CategoryMetadata> = {
   // Legacy mappings for backward compatibility
   machine_breakdown: {
     id: "machine_breakdown",
-    label: "ABNORMAL MESIN",
+    label: "MACHINE ABNORMALITY",
     labelEn: "MACHINE ABNORMALITY",
     icon: "Flame",
     color: "red",
@@ -79,7 +79,7 @@ export const CATEGORIES_DATA: Record<CallCategory, CategoryMetadata> = {
   },
   quality_defect: {
     id: "quality_defect",
-    label: "CALLING LEADER (KUALITAS)",
+    label: "CALLING LEADER (QUALITY)",
     labelEn: "CALLING LEADER (QUALITY)",
     icon: "UserCheck",
     color: "amber",
@@ -92,7 +92,7 @@ export const CATEGORIES_DATA: Record<CallCategory, CategoryMetadata> = {
   },
   maintenance_tooling: {
     id: "maintenance_tooling",
-    label: "ABNORMAL MESIN (TOOLING)",
+    label: "MACHINE (TOOLING)",
     labelEn: "MACHINE (TOOLING)",
     icon: "Flame",
     color: "red",
@@ -118,7 +118,7 @@ export const CATEGORIES_DATA: Record<CallCategory, CategoryMetadata> = {
   },
   safety_alert: {
     id: "safety_alert",
-    label: "ABNORMAL MESIN (K3 / SAFETY)",
+    label: "MACHINE (SAFETY)",
     labelEn: "MACHINE (SAFETY)",
     icon: "Flame",
     color: "red",
@@ -151,9 +151,9 @@ export const PRIMARY_ANDON_BUTTONS: PrimaryCategoryItem[] = [
     id: "abnormal_machine",
     colorName: "MERAH",
     colorNameEn: "RED",
-    title: "ABNORMAL MESIN",
+    title: "MACHINE ABNORMALITY",
     titleEn: "MACHINE ABNORMALITY",
-    subtitle: "Kerusakan Mesin / Line Stop / Kendala Mekanikal & Elektrikal",
+    subtitle: "Machine breakdown, electrical/mechanical fault, line stop",
     subtitleEn: "Machine breakdown, electrical/mechanical fault, line stop",
     badgeClass: "bg-red-600 text-white",
     borderClass: "border-red-500",
@@ -167,7 +167,7 @@ export const PRIMARY_ANDON_BUTTONS: PrimaryCategoryItem[] = [
     colorNameEn: "YELLOW",
     title: "CALLING LEADER",
     titleEn: "CALLING LEADER",
-    subtitle: "Abnormal Kualitas, Proses, dan Produktivitas",
+    subtitle: "Quality abnormality, process delay, tooling & productivity",
     subtitleEn: "Quality abnormality, process delay, tooling & productivity",
     badgeClass: "bg-amber-500 text-slate-950",
     borderClass: "border-amber-500",
@@ -181,7 +181,7 @@ export const PRIMARY_ANDON_BUTTONS: PrimaryCategoryItem[] = [
     colorNameEn: "GREEN",
     title: "CALLING MATERIAL SUPPORT",
     titleEn: "CALLING MATERIAL SUPPORT",
-    subtitle: "Pengadaan Material / Abnormality Material",
+    subtitle: "Material supply replenishment & abnormality",
     subtitleEn: "Material supply replenishment & abnormality",
     badgeClass: "bg-emerald-600 text-white",
     borderClass: "border-emerald-500",

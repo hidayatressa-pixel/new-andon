@@ -12,18 +12,20 @@ import {
   Settings, 
   AlertTriangle, 
   Flame, 
-  Activity,
-  Layers,
-  History,
-  User,
-  LogOut,
-  ShieldCheck,
-  Sun,
-  Moon,
-  Globe
+  Layers, 
+  History, 
+  User, 
+  LogOut, 
+  ShieldCheck, 
+  Sun, 
+  Moon 
 } from "lucide-react";
 import { ActiveTab, AndonCall, SoundConfig, UserProfile, AppTheme, AppLanguage } from "../types";
 import { getTranslation, TranslationKey } from "../utils/i18n";
+import { canResolveAndon, canManageMasterData } from "../utils/permissions";
+import { AppLogo } from "./Logo";
+import { loadSavedBranding } from "../utils/branding";
+import { BrandConfig } from "../types";
 
 interface HeaderProps {
   activeTab: ActiveTab;
@@ -61,6 +63,7 @@ export const Header: React.FC<HeaderProps> = ({
   const [currentTime, setCurrentTime] = useState<string>("");
   const [currentDate, setCurrentDate] = useState<string>("");
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  const [branding, setBranding] = useState<BrandConfig>(loadSavedBranding);
 
   const t = (key: TranslationKey, params?: Record<string, string | number>) => 
     getTranslation(language, key, params);
@@ -68,8 +71,21 @@ export const Header: React.FC<HeaderProps> = ({
   const isLight = theme === "light";
 
   const isOperator = currentUser?.role === "operator";
-  const isLeader = currentUser?.role === "technician" || currentUser?.role === "supervisor";
-  const isAdmin = currentUser?.role === "admin";
+  const isLeader = canResolveAndon(currentUser);
+  const isAdmin = canManageMasterData(currentUser);
+
+  useEffect(() => {
+    const handleBrandChange = (e: Event) => {
+      const customEvent = e as CustomEvent<BrandConfig>;
+      if (customEvent.detail) {
+        setBranding(customEvent.detail);
+      } else {
+        setBranding(loadSavedBranding());
+      }
+    };
+    window.addEventListener("andon_brand_change", handleBrandChange);
+    return () => window.removeEventListener("andon_brand_change", handleBrandChange);
+  }, []);
 
   useEffect(() => {
     const updateTime = () => {
@@ -139,13 +155,12 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2 flex flex-wrap items-center justify-between gap-3">
         {/* Brand & System Title */}
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-red-600 flex items-center justify-center shadow-md shadow-amber-500/20 text-white font-black">
-            <Activity className="w-5 h-5" />
-          </div>
+          <AppLogo size={branding.logoHeight || 34} theme={theme} />
+          <div className="h-6 w-px bg-slate-200 dark:bg-neutral-800 hidden sm:block" />
           <div>
             <div className="flex items-center gap-2">
-              <h1 className={`font-black text-sm sm:text-base tracking-tight ${isLight ? "text-slate-900" : "text-white"}`}>
-                ANDON <span className="text-amber-500">SMART FACTORY</span>
+              <h1 className={`font-black text-xs sm:text-sm tracking-tight ${isLight ? "text-slate-900" : "text-white"}`}>
+                {branding.customAppName || "ANDON SMART FACTORY"}
               </h1>
               <span className={`text-[9px] font-mono px-1.5 py-0.2 rounded font-bold uppercase border ${
                 isLight 
@@ -156,7 +171,7 @@ export const Header: React.FC<HeaderProps> = ({
               </span>
             </div>
             <p className={`text-[10px] flex items-center gap-1.5 ${isLight ? "text-slate-500" : "text-neutral-400"}`}>
-              <span>{t("subtitle")}</span>
+              <span>{branding.customAppSubtitle || t("subtitle")}</span>
               <span className={`w-1 h-1 rounded-full ${isLight ? "bg-slate-300" : "bg-neutral-600"}`} />
               <span className={`font-semibold ${isLight ? "text-amber-700" : "text-amber-300"}`}>
                 {t("shiftActive")}
@@ -252,6 +267,25 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Map className="w-3.5 h-3.5 text-emerald-500" />
               <span>{t("tabPlantMap")}</span>
+            </button>
+          )}
+
+          {isAdmin && (
+            <button
+              id="tab-admin-dashboard"
+              onClick={() => setActiveTab("admin_dashboard")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all whitespace-nowrap ${
+                activeTab === "admin_dashboard"
+                  ? isLight
+                    ? "bg-white text-slate-900 font-bold shadow-sm border border-slate-200"
+                    : "bg-neutral-800 text-white font-bold shadow-sm border border-neutral-700"
+                  : isLight
+                  ? "text-slate-600 hover:text-slate-900 hover:bg-white/50"
+                  : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-900"
+              }`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-rose-500 animate-pulse" />
+              <span>{language === "id" ? "Admin Console" : "Admin Console"}</span>
             </button>
           )}
 

@@ -1,0 +1,10 @@
+badgeId,name,role,department,email
+OP-1001,Agus Pratama,operator,Machining,agus.pratama@factory.local
+OP-1002,Budi Santoso,operator,Stamping,budi.santoso@factory.local
+OP-1003,Citra Dewi,operator,Welding,citra.dewi@factory.local
+OP-1004,Doni Setiawan,operator,Painting,doni.setiawan@factory.local
+OP-1005,Eko Wahyudi,operator,Assembly,eko.wahyudi@factory.local
+TECH-2001,Rudi Hermawan,technician,Maintenance & Tooling,rudi.maint@factory.local
+TECH-2002,Fajar Nugroho,technician,Electrical Automation,fajar.electric@factory.local
+SPV-3001,Hartono Mulyadi,supervisor,Production Operations,hartono.spv@factory.local
+ADMIN-99,Siti Rahayu,admin,Plant Engineering & IT,admin.it@factory.local
