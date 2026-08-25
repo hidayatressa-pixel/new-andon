@@ -83,7 +83,33 @@ const DEMO_KEYS = {
   OPERATORS: "master_operators_demo_v4"
 } as const;
 
-// Local storage helpers
+// Helper function to safely dispatch Telegram notifications in background
+async function dispatchTelegramNotification(
+  callId: string, 
+  actionType: "OPEN" | "ACK" | "RESOLVE" | "CANCEL", 
+  initialCallData?: AndonCall
+): Promise<void> {
+  try {
+    let fullCall: AndonCall | null = initialCallData || null;
+    if (!fullCall) {
+      if (IS_DEMO_MODE) {
+        fullCall = demoState.calls.find(c => c.id === callId) || null;
+      } else {
+        const snap = await getDoc(doc(db, COLLECTIONS.CALLS, callId));
+        if (snap.exists()) {
+          fullCall = { id: snap.id, ...snap.data() } as AndonCall;
+        }
+      }
+    }
+
+    if (fullCall) {
+      const tgMsg = formatAndonCallTelegramMessage(fullCall, actionType);
+      await sendTelegramNotification(tgMsg);
+    }
+  } catch (err) {
+    console.warn(`Error sending Telegram ${actionType} notification:`, err);
+  }
+}
 function getLocalStorageData<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
   try {
@@ -256,13 +282,8 @@ export async function createAndonCallInDb(
     id: callId
   } as AndonCall;
 
-  // Trigger Telegram Notification asynchronously (Non-blocking)
-  try {
-    const tgMsg = formatAndonCallTelegramMessage(finalCall, "OPEN");
-    sendTelegramNotification(tgMsg).catch((err) => console.warn("Telegram notification send error:", err));
-  } catch (err) {
-    console.warn("Error formatting Telegram notification:", err);
-  }
+  // Trigger Telegram Notification asynchronously (Non-blocking safe promise)
+  void dispatchTelegramNotification(callId, "OPEN", finalCall);
 
   if (IS_DEMO_MODE) {
     demoState.calls = [finalCall, ...demoState.calls.filter(c => c.id !== callId)];
@@ -389,35 +410,16 @@ export async function updateAndonCallInDb(
   }
 
   // Trigger Telegram Notification asynchronously for State transitions (ACK / RESOLVE)
-  (async () => {
-    try {
-      let fullCall: AndonCall | null = null;
-      if (IS_DEMO_MODE) {
-        fullCall = demoState.calls.find(c => c.id === callId) || null;
-      } else {
-        const snap = await getDoc(doc(db, COLLECTIONS.CALLS, callId));
-        if (snap.exists()) {
-          fullCall = { id: snap.id, ...snap.data() } as AndonCall;
-        }
-      }
+  const targetAction: "ACK" | "RESOLVE" | null = 
+    updatePayload.status === "in_progress" 
+      ? "ACK" 
+      : updatePayload.status === "resolved" 
+        ? "RESOLVE" 
+        : null;
 
-      if (fullCall) {
-        let actionType: "ACK" | "RESOLVE" | null = null;
-        if (fullCall.status === "in_progress") {
-          actionType = "ACK";
-        } else if (fullCall.status === "resolved") {
-          actionType = "RESOLVE";
-        }
-
-        if (actionType) {
-          const tgMsg = formatAndonCallTelegramMessage(fullCall, actionType);
-          await sendTelegramNotification(tgMsg);
-        }
-      }
-    } catch (err) {
-      console.warn("Error sending Telegram update notification:", err);
-    }
-  })();
+  if (targetAction) {
+    void dispatchTelegramNotification(callId, targetAction);
+  }
 }
 
 export async function deleteAndonCallInDb(
@@ -425,26 +427,8 @@ export async function deleteAndonCallInDb(
   currentUser?: { name: string; id: string; role: string }, 
   ticketNo?: string
 ): Promise<void> {
-  // Trigger Telegram Notification asynchronously for Cancellation (Non-blocking)
-  (async () => {
-    try {
-      let fullCall: AndonCall | null = null;
-      if (IS_DEMO_MODE) {
-        fullCall = demoState.calls.find(c => c.id === callId) || null;
-      } else {
-        const snap = await getDoc(doc(db, COLLECTIONS.CALLS, callId));
-        if (snap.exists()) {
-          fullCall = { id: snap.id, ...snap.data() } as AndonCall;
-        }
-      }
-      if (fullCall) {
-        const tgMsg = formatAndonCallTelegramMessage(fullCall, "CANCEL");
-        await sendTelegramNotification(tgMsg);
-      }
-    } catch (err) {
-      console.warn("Error sending Telegram delete notification:", err);
-    }
-  })();
+  // Trigger Telegram Notification asynchronously for Cancellation (Non-blocking safe promise)
+  void dispatchTelegramNotification(callId, "CANCEL");
 
   if (IS_DEMO_MODE) {
     demoState.calls = demoState.calls.filter(c => c.id !== callId);
